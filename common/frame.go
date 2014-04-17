@@ -47,14 +47,10 @@ func (f GOAWAYFrame) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x7
 
-	lastStreamId := make([]byte, 4)
-	binary.BigEndian.PutUint32(lastStreamId, f.LastStreamId)
-
-	errorCode := make([]byte, 4)
-	binary.BigEndian.PutUint32(errorCode, f.ErrorCode)
-
-	payload := append(lastStreamId, errorCode...)
-	payload = append(payload, f.AdditionalDebugData...)
+	payload := make([]byte, 8 + len(f.AdditionalDebugData))
+	binary.BigEndian.PutUint32(payload[0:4], f.LastStreamId)
+	binary.BigEndian.PutUint32(payload[4:8], f.ErrorCode)
+	copy(payload, f.AdditionalDebugData)
 
 	bf.Payload = string(payload)
 
