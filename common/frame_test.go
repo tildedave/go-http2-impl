@@ -6,9 +6,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMarshalEmptyFrame(t *testing.T) {
+
+type stringWrapper struct {
+	data string
+}
+
+// This is named wrong
+func (s stringWrapper) Marshal() []byte {
+	return []byte(s.data)
+}
+
+func testFrame() Frame {
 	f := Frame{}
-	marshalled_f := Marshal(f)
+	f.Payload = stringWrapper{}
+
+	return f
+}
+
+func TestMarshalEmptyFrame(t *testing.T) {
+	f := testFrame()
+
+	marshalled_f := f.Marshal()
 
 	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
 
@@ -17,10 +35,10 @@ func TestMarshalEmptyFrame(t *testing.T) {
 }
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
-	f := Frame{}
-	f.Payload = "this is the payload of the frame"
+	f := testFrame()
+	f.Payload = stringWrapper{ "this is the payload of the frame" }
 
-	marshalled_f := Marshal(f)
+	marshalled_f := f.Marshal()
 
 	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
 
@@ -29,25 +47,26 @@ func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 }
 
 func TestMarshalFrameWithType(t *testing.T) {
-	f := Frame{}
+	f := testFrame()
 	f.Type = byte(8)
 
-	assert.Equal(t, byte(8), Marshal(f)[2],
+	assert.Equal(t, byte(8), f.Marshal()[2],
 		"Type should have been marshalled as the third byte")
 }
 
 func TestMarshalFrameWithFlags(t *testing.T) {
-	f := Frame{}
+	f := testFrame()
 	f.Flags = byte(0xD)
 
-	assert.Equal(t, byte(0xD), Marshal(f)[3],
+	assert.Equal(t, byte(0xD), f.Marshal()[3],
 		"Flags should have been marshalled as the fourth byte")
 }
 
 func TestMarshalFrameWithStreamIdentifier(t *testing.T) {
-	f := Frame{}
+	f := testFrame()
 	f.StreamIdentifier = 168036609
-	marshalled_f := Marshal(f)
+
+	marshalled_f := f.Marshal()
 
 	stream_identifier := binary.BigEndian.Uint32(marshalled_f[4:8]) & uint32(0x7FFFFFFF)
 
