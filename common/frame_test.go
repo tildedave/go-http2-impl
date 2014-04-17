@@ -1,18 +1,27 @@
 package common
 
 import (
+	"encoding/binary"
 	"testing"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMarshalEmptyFrame(t *testing.T) {
-	f := Marshal(Frame{ 0, 0, 0, ""})
+	f := Frame{ 0, 0, 0, ""}
+	marshalled_f := Marshal(f)
 
-	f[0] & 192
+	length := binary.BigEndian.Uint16(marshalled_f) & 0x7F
+
+	assert.Equal(t, length, uint16(0),
+		"Length should have been nothing")
 }
 
-func TestMarshalFrameWithPayload(t *testing.T) {
-	f := Marshal(Frame{ 0, 0, 0, ""})
+func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
+	f := Frame{ 0, 0, 0, "this is the payload of the frame"}
+	marshalled_f := Marshal(f)
 
-	f[0] & 192
+	length := binary.BigEndian.Uint16(marshalled_f) & 0x7F
+
+	assert.Equal(t, int(length), len(f.Payload),
+		"Length field in header should have been the length of payload")
 }

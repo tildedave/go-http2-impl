@@ -7,6 +7,8 @@ type Frame struct {
 	Payload string
 }
 
-func Marshal(f Frame) string {
-	return "akjdgl"
+func Marshal(f Frame) []byte {
+	length := len(f.Payload)
+
+	return []byte{ byte(length >> 8), byte(length) }
 }
