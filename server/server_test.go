@@ -2,6 +2,9 @@ package server
 
 import "testing"
 
-func TestRespondMustBeginWithPreface(t *testing.T) {
-	t.Errorf("wubba lubba dub dubs")
+func TestRespondWithoutPrefaceClosesConnection(t *testing.T) {
+	_, closedConn := Respond("something that is not the preface")
+	if closedConn != false {
+		t.Errorf("Should have closed the connection")
+	}
 }

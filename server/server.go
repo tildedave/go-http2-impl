@@ -1,5 +1,5 @@
 package server
 
-func Respond(data string) string {
-	return "dalksgjlak"
+func Respond(data string) (string, bool) {
+	return "dalksgjlak", false
 }
