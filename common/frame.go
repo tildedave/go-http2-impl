@@ -1,5 +1,9 @@
 package common
 
+import (
+	"encoding/binary"
+)
+
 type Frame struct {
 	Type uint8
 	Flags uint8
@@ -8,11 +12,12 @@ type Frame struct {
 }
 
 func Marshal(f Frame) []byte {
-	length := len(f.Payload)
+	length := make([]byte, 2)
+	binary.BigEndian.PutUint16(length, uint16(len(f.Payload)))
 
-	return []byte{ byte(length >> 8), byte(length), f.Type, f.Flags,
-		byte(f.StreamIdentifier >> 24),
-		byte(f.StreamIdentifier >> 16),
-		byte(f.StreamIdentifier >> 8),
-		byte(f.StreamIdentifier)}
+	streamIdentifier := make([]byte, 4)
+	binary.BigEndian.PutUint32(streamIdentifier, f.StreamIdentifier)
+
+	return append(append(length, f.Type, f.Flags),
+		      streamIdentifier...)
 }

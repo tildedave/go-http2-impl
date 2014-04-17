@@ -7,7 +7,7 @@ import (
 )
 
 func TestMarshalEmptyFrame(t *testing.T) {
-	f := Frame{ 0, 0, 0, ""}
+	f := Frame{}
 	marshalled_f := Marshal(f)
 
 	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
@@ -17,7 +17,9 @@ func TestMarshalEmptyFrame(t *testing.T) {
 }
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
-	f := Frame{ 0, 0, 0, "this is the payload of the frame"}
+	f := Frame{}
+	f.Payload = "this is the payload of the frame"
+
 	marshalled_f := Marshal(f)
 
 	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
