@@ -18,7 +18,7 @@ func TestMarshalEmptyFrame(t *testing.T) {
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 	f := Frame{}
-	f.Payload = Payload{ "this is the payload of the frame" }
+	f.Payload = "this is the payload of the frame"
 
 	marshalled_f := Marshal(f)
 
