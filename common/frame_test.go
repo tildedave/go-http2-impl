@@ -11,20 +11,8 @@ type stringWrapper struct {
 	data string
 }
 
-// This is named wrong
-func (s stringWrapper) Marshal() []byte {
-	return []byte(s.data)
-}
-
-func testFrame() Frame {
-	f := Frame{}
-	f.Payload = stringWrapper{}
-
-	return f
-}
-
 func TestMarshalEmptyFrame(t *testing.T) {
-	f := testFrame()
+	f := baseFrame{}
 
 	marshalled_f := f.Marshal()
 
@@ -35,8 +23,8 @@ func TestMarshalEmptyFrame(t *testing.T) {
 }
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
-	f := testFrame()
-	f.Payload = stringWrapper{ "this is the payload of the frame" }
+	f := baseFrame{}
+	f.Payload = []byte("this is the payload of the frame")
 
 	marshalled_f := f.Marshal()
 
@@ -47,7 +35,7 @@ func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 }
 
 func TestMarshalFrameWithType(t *testing.T) {
-	f := testFrame()
+	f := baseFrame{}
 	f.Type = byte(8)
 
 	assert.Equal(t, byte(8), f.Marshal()[2],
@@ -55,7 +43,7 @@ func TestMarshalFrameWithType(t *testing.T) {
 }
 
 func TestMarshalFrameWithFlags(t *testing.T) {
-	f := testFrame()
+	f := baseFrame{}
 	f.Flags = byte(0xD)
 
 	assert.Equal(t, byte(0xD), f.Marshal()[3],
@@ -63,7 +51,7 @@ func TestMarshalFrameWithFlags(t *testing.T) {
 }
 
 func TestMarshalFrameWithStreamIdentifier(t *testing.T) {
-	f := testFrame()
+	f := baseFrame{}
 	f.StreamIdentifier = 168036609
 
 	marshalled_f := f.Marshal()

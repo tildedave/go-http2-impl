@@ -4,33 +4,34 @@ import (
 	"encoding/binary"
 )
 
-type Frame struct {
+// baseFrame is used internally to marshal other types of frames
+type baseFrame struct {
 	Type uint8
 	Flags uint8
 	StreamIdentifier uint32
-	Payload Marshaller
+	Payload []byte
 }
 
-type Data_Frame struct {
+type DataFrame struct {
 	PadHigh uint8
 	PadLow uint8
 }
 
-type GOAWAY_Frame struct {
+type GOAWAYFrame struct {
 	LastStreamId uint32
 	ErrorCode uint32
 	AdditionalDebugData string
 }
 
-type Marshaller interface {
+type Frame interface {
 	Marshal() []byte
+	Length() uint32
 }
 
-func (f Frame) Marshal() []byte {
-	payload := f.Payload.Marshal()
 
+func (f baseFrame) Marshal() []byte {
 	length := make([]byte, 2)
-	binary.BigEndian.PutUint16(length, uint16(len(payload)))
+	binary.BigEndian.PutUint16(length, uint16(len(f.Payload)))
 
 	streamIdentifier := make([]byte, 4)
 	binary.BigEndian.PutUint32(streamIdentifier, f.StreamIdentifier)
