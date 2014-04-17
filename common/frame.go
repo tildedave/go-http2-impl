@@ -12,9 +12,11 @@ type baseFrame struct {
 	Payload string
 }
 
-type DataFrame struct {
-	PadHigh uint16
-	PadLow uint8
+type PingFrame struct {
+	OpaqueData uint64
+	Flags struct {
+		ACK bool
+	}
 }
 
 type GOAWAYFrame struct {
@@ -45,10 +47,10 @@ func (f GOAWAYFrame) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x7
 
-	lastStreamId := make([]byte, 8)
+	lastStreamId := make([]byte, 4)
 	binary.BigEndian.PutUint32(lastStreamId, f.LastStreamId)
 
-	errorCode := make([]byte, 8)
+	errorCode := make([]byte, 4)
 	binary.BigEndian.PutUint32(errorCode, f.ErrorCode)
 
 	payload := append(lastStreamId, errorCode...)
@@ -57,4 +59,19 @@ func (f GOAWAYFrame) Marshal() []byte {
 	bf.Payload = string(payload)
 
 	return bf.Marshal()
+}
+
+func (f PingFrame) Marshal() []byte {
+	bf := baseFrame{}
+	bf.Type = 0x6
+	if (f.Flags.ACK) {
+		bf.Flags = 0x1
+	}
+
+	payload := make([]byte, 8)
+	binary.BigEndian.PutUint64(payload, f.OpaqueData)
+	bf.Payload = string(payload)
+
+	return bf.Marshal()
+
 }
