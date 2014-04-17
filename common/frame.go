@@ -30,17 +30,13 @@ type Frame interface {
 }
 
 func (f baseFrame) Marshal() []byte {
-	length := make([]byte, 2)
-	binary.BigEndian.PutUint16(length, uint16(len(f.Payload)))
+	header := make([]byte, 8)
+	binary.BigEndian.PutUint16(header, uint16(len(f.Payload)))
+	header[2] = f.Type
+	header[3] = f.Flags
+	binary.BigEndian.PutUint32(header[4:8], f.StreamIdentifier)
 
-	streamIdentifier := make([]byte, 4)
-	binary.BigEndian.PutUint32(streamIdentifier, f.StreamIdentifier)
-
-	marshalled_f := append(length, f.Type, f.Flags)
-	marshalled_f = append(marshalled_f, streamIdentifier...)
-	marshalled_f = append(marshalled_f, f.Payload...)
-
-	return marshalled_f
+	return append(header, f.Payload...)
 }
 
 func (f GOAWAYFrame) Marshal() []byte {
