@@ -9,23 +9,22 @@ type baseFrame struct {
 	Type uint8
 	Flags uint8
 	StreamIdentifier uint32
-	Payload []byte
+	Payload string
 }
 
 type DataFrame struct {
-	PadHigh uint8
+	PadHigh uint16
 	PadLow uint8
 }
 
 type GOAWAYFrame struct {
 	LastStreamId uint32
 	ErrorCode uint32
-	AdditionalDebugData []byte
+	AdditionalDebugData string
 }
 
 type Frame interface {
-	Marshal() []byte
-	Length() uint32
+	Marshal() string
 }
 
 func (f baseFrame) Marshal() []byte {
@@ -55,7 +54,7 @@ func (f GOAWAYFrame) Marshal() []byte {
 	payload := append(lastStreamId, errorCode...)
 	payload = append(payload, f.AdditionalDebugData...)
 
-	bf.Payload = payload
+	bf.Payload = string(payload)
 
 	return bf.Marshal()
 }

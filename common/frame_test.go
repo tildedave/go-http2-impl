@@ -24,7 +24,7 @@ func TestMarshalEmptyFrame(t *testing.T) {
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 	f := baseFrame{}
-	f.Payload = []byte("this is the payload of the frame")
+	f.Payload = "this is the payload of the frame"
 
 	marshalled_f := f.Marshal()
 
@@ -81,7 +81,7 @@ func TestMarshalGOAWAYFrameWithNoAdditionalDebugInfoSetsLength(t *testing.T) {
 
 func TestMarshalGOAWAYFrameWithDebugInfoSetsLength(t *testing.T) {
 	f := GOAWAYFrame{}
-	f.AdditionalDebugData = []byte("This is some additional debug info to help you")
+	f.AdditionalDebugData = "This is some additional debug info to help you"
 
 	expectedLength := len(f.AdditionalDebugData) + 16
 
