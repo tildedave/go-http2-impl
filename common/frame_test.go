@@ -18,13 +18,13 @@ func TestMarshalEmptyFrame(t *testing.T) {
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 	f := Frame{}
-	f.Payload = "this is the payload of the frame"
+	f.Payload = Payload{ "this is the payload of the frame" }
 
 	marshalled_f := Marshal(f)
 
 	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
 
-	assert.Equal(t, int(length), len(f.Payload),
+	assert.Equal(t, int(length), len("this is the payload of the frame"),
 		"Length field in header should have been the length of payload")
 }
 

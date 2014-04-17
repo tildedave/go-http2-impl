@@ -4,16 +4,20 @@ import (
 	"encoding/binary"
 )
 
+type Payload struct {
+	Data string
+}
+
 type Frame struct {
 	Type uint8
 	Flags uint8
 	StreamIdentifier uint32
-	Payload string
+	Payload Payload
 }
 
 func Marshal(f Frame) []byte {
 	length := make([]byte, 2)
-	binary.BigEndian.PutUint16(length, uint16(len(f.Payload)))
+	binary.BigEndian.PutUint16(length, uint16(len(f.Payload.Data)))
 
 	streamIdentifier := make([]byte, 4)
 	binary.BigEndian.PutUint32(streamIdentifier, f.StreamIdentifier)
