@@ -10,7 +10,7 @@ func TestMarshalEmptyFrame(t *testing.T) {
 	f := Frame{ 0, 0, 0, ""}
 	marshalled_f := Marshal(f)
 
-	length := binary.BigEndian.Uint16(marshalled_f) & 0x7F
+	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
 
 	assert.Equal(t, length, uint16(0),
 		"Length should have been nothing")
@@ -20,8 +20,17 @@ func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 	f := Frame{ 0, 0, 0, "this is the payload of the frame"}
 	marshalled_f := Marshal(f)
 
-	length := binary.BigEndian.Uint16(marshalled_f) & 0x7F
+	length := binary.BigEndian.Uint16(marshalled_f[0:2]) & 0x7F
 
 	assert.Equal(t, int(length), len(f.Payload),
 		"Length field in header should have been the length of payload")
+}
+
+func TestMarshalFrameWithType(t *testing.T) {
+	f := Frame{}
+	f.Type = byte(8)
+	marshalled_f := Marshal(f)
+
+	assert.Equal(t, byte(8), marshalled_f[2],
+		"Type should have been marshalled as the third byte")
 }

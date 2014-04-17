@@ -10,5 +10,5 @@ type Frame struct {
 func Marshal(f Frame) []byte {
 	length := len(f.Payload)
 
-	return []byte{ byte(length >> 8), byte(length) }
+	return []byte{ byte(length >> 8), byte(length), f.Type }
 }
