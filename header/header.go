@@ -76,6 +76,70 @@ var StaticTable = map[int]HeaderField{
 	61: {"www-authenticate", ""},
 }
 
+var StaticTableReverse = map[HeaderField]int{
+	HeaderField{":authority", ""}: 1,
+	HeaderField{":method", "GET"}: 2,
+	HeaderField{":method", "POST"}: 3,
+	HeaderField{":path", "/"}: 4,
+	HeaderField{":path", "/index.html"}: 5,
+	HeaderField{":scheme", "http"}: 6,
+	HeaderField{":scheme", "https"}: 7,
+	HeaderField{":status", "200"}: 8,
+	HeaderField{":status", "204"}: 9,
+	HeaderField{":status", "206"}: 10,
+	HeaderField{":status", "304"}: 11,
+	HeaderField{":status", "400"}: 12,
+	HeaderField{":status", "404"}: 13,
+	HeaderField{":status", "500"}: 14,
+	HeaderField{"accept-charset", ""}: 15,
+	HeaderField{"accept-encoding", ""}: 16,
+	HeaderField{"accept-language", ""}: 17,
+	HeaderField{"accept-ranges", ""}: 18,
+	HeaderField{"accept", ""}: 19,
+	HeaderField{"access-control-allow-origin", ""}: 20,
+	HeaderField{"age", ""}: 21,
+	HeaderField{"allow", ""}: 22,
+	HeaderField{"authorization", ""}: 23,
+	HeaderField{"cache-control", ""}: 24,
+	HeaderField{"content-disposition", ""}: 25,
+	HeaderField{"content-encoding", ""}: 26,
+	HeaderField{"content-language", ""}: 27,
+	HeaderField{"content-length", ""}: 28,
+	HeaderField{"content-location", ""}: 29,
+	HeaderField{"content-range", ""}: 30,
+	HeaderField{"content-type", ""}: 31,
+	HeaderField{"cookie", ""}: 32,
+	HeaderField{"date", ""}: 33,
+	HeaderField{"etag", ""}: 34,
+	HeaderField{"expect", ""}: 35,
+	HeaderField{"expires", ""}: 36,
+	HeaderField{"from", ""}: 37,
+	HeaderField{"host", ""}: 38,
+	HeaderField{"if-match", ""}: 39,
+	HeaderField{"if-modified-since", ""}: 40,
+	HeaderField{"if-none-match", ""}: 41,
+	HeaderField{"if-range", ""}: 42,
+	HeaderField{"if-unmodified-since", ""}: 43,
+	HeaderField{"last-modified", ""}: 44,
+	HeaderField{"link", ""}: 45,
+	HeaderField{"location", ""}: 46,
+	HeaderField{"max-forwards", ""}: 47,
+	HeaderField{"proxy-authenticate", ""}: 48,
+	HeaderField{"proxy-authorization", ""}: 49,
+	HeaderField{"range", ""}: 50,
+	HeaderField{"referer", ""}: 51,
+	HeaderField{"refresh", ""}: 52,
+	HeaderField{"retry-after", ""}: 53,
+	HeaderField{"server", ""}: 54,
+	HeaderField{"set-cookie", ""}: 55,
+	HeaderField{"strict-transport-security", ""}: 56,
+	HeaderField{"transfer-encoding", ""}: 57,
+	HeaderField{"user-agent", ""}: 58,
+	HeaderField{"vary", ""}: 59,
+	HeaderField{"via", ""}: 60,
+	HeaderField{"www-authenticate", ""}: 61,
+}
+
 func Encode(hset HeaderSet) []byte {
 	if len(hset.Headers) == 0 {
 		return []byte{}
@@ -83,12 +147,10 @@ func Encode(hset HeaderSet) []byte {
 
 	encodedHeader := make([]byte, 1)
 	for _, header := range hset.Headers {
-		// quite stupid implementation
-		for idx, idxHeader := range StaticTable {
-			if idxHeader.Name == header.Name && idxHeader.Value == header.Value {
-				encodedHeader[0] = byte(idx)
-				encodedHeader[0] |= 0x80
-			}
+		idx := StaticTableReverse[header]
+		if idx != 0 {
+			encodedHeader[0] = byte(idx)
+			encodedHeader[0] |= 0x80
 		}
 	}
 
