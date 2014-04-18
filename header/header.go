@@ -5,7 +5,9 @@ type HeaderField struct {
 	Value string
 }
 
-type HeaderTable []HeaderField
+type HeaderTable struct {
+	Entries []HeaderField
+}
 
 type HeaderSet struct {
 	Headers []HeaderField
@@ -139,15 +141,24 @@ var StaticTableReverse = map[HeaderField]int{
 	HeaderField{"www-authenticate", ""}: 61,
 }
 
-func Encode(header HeaderField) string {
+func addHeaderToTable(header HeaderField, table *HeaderTable) {
+	entries := make([]HeaderField, len(table.Entries) + 1)
+	copy(entries[1:], table.Entries)
+
+	entries[0] = header
+	table.Entries = entries
+}
+
+func Encode(header HeaderField, table *HeaderTable) string {
 	encodedHeaders := make([]byte, 0)
 
 	idx := StaticTableReverse[header]
 	if idx != 0 {
 		h := make([]byte, 1)
-		h[0] = byte(idx)
+		h[0] = byte(idx + len(table.Entries))
 		h[0] |= 0x80
 
+		addHeaderToTable(header, table)
 		encodedHeaders = append(encodedHeaders, h...)
 		return string(encodedHeaders)
 	}
@@ -157,7 +168,7 @@ func Encode(header HeaderField) string {
 	if idx != 0 {
 		// http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#section-4.3.1
 		h := make([]byte, 2)
-		h[0] = byte(idx)
+		h[0] = byte(idx + len(table.Entries))
 		h[0] |= 0x40
 		h[1] = byte(len(header.Value))
 
