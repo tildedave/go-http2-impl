@@ -100,13 +100,9 @@ func (f PingFrame) Marshal() []byte {
 	return bf.Marshal()
 }
 
-func (f DataFrame) Marshal() []byte {
-	bf := baseFrame{}
-	bf.Type = 0x0
-
-	paddingLength := uint16(len(f.Padding))
-
+func paddingHeaders(bf* baseFrame, padding string) []byte {
 	paddingHeaders := make([]byte, 0, 2)
+	paddingLength := uint16(len(padding))
 	if paddingLength > 0 {
 		// set PADDING_LOW flag
 		bf.Flags |= 0x08
@@ -123,7 +119,14 @@ func (f DataFrame) Marshal() []byte {
 		}
 	}
 
-	payload := paddingHeaders
+	return paddingHeaders
+}
+
+func (f DataFrame) Marshal() []byte {
+	bf := baseFrame{}
+	bf.Type = 0x0
+
+	payload := paddingHeaders(&bf, f.Padding)
 	payload = append(payload, f.Data...)
 	payload = append(payload, f.Padding...)
 	bf.Payload = string(payload)
@@ -142,24 +145,28 @@ func (f HeadersFrame) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x1
 
-	payload := make([]byte, 0, 5)
-
+	flagHeaders := make([]byte, 0, 5)
 	if f.Flags.PRIORITY_GROUP {
-		payload = payload[0:5]
-		binary.BigEndian.PutUint32(payload, f.PriorityGroupIdentifier)
-		payload[0] |= 0x80
-		payload[4] = f.Weight
+		flagHeaders = flagHeaders[0:5]
+		binary.BigEndian.PutUint32(flagHeaders, f.PriorityGroupIdentifier)
+		flagHeaders[0] |= 0x80
+		flagHeaders[4] = f.Weight
 		bf.Flags |= 0x20
 
 	} else if f.Flags.PRIORITY_DEPENDENCY {
-		payload = payload[0:4]
-		binary.BigEndian.PutUint32(payload, f.StreamDependency)
-		payload[0] |= 0x80
+		flagHeaders = flagHeaders[0:4]
+		binary.BigEndian.PutUint32(flagHeaders, f.StreamDependency)
+		flagHeaders[0] |= 0x80
 
 		bf.Flags |= 0x40
 	}
-	bf.Payload = string(append(payload, f.HeaderBlockFragment...))
 
+	payload := paddingHeaders(&bf, f.Padding)
+	payload = append(payload, flagHeaders...)
+	payload = append(payload, f.HeaderBlockFragment...)
+	payload = append(payload, f.Padding...)
+
+	bf.Payload = string(payload)
 
 	return bf.Marshal()
 }

@@ -283,10 +283,51 @@ func TestMarshalHeadersFrameWithPriorityDependency(t *testing.T) {
 
 func TestMarshalHeadersFrameWithSmallAmountOfPadding(t *testing.T) {
 	f := HeadersFrame{}
+	f.HeaderBlockFragment = "content-type:application/json"
 	f.Padding = "This is less than 256 padding"
 
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameType(marshalled), byte(0x01),
-		"Type of HEADERS frame should have been 0x01")
+	assert.Equal(t,
+		marshalled[8],
+		byte(len(f.Padding)))
+
+	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+		"Padding low flag should have been set")
+	assert.Equal(t, marshalled[8], byte(len(f.Padding)),
+		"Padding low length should have been set")
+	assert.Equal(t, marshalled[9:9 + len(f.HeaderBlockFragment)],
+		[]byte(f.HeaderBlockFragment),
+		"Header block fragment should have matched")
+	assert.Equal(t, marshalled[9 + len(f.HeaderBlockFragment):],
+		[]byte(f.Padding),
+		"Padding should have matched")
+}
+
+func TestMarshalHeadersFrameWithPaddingHighSet(t *testing.T) {
+	f := HeadersFrame{}
+	f.HeaderBlockFragment = "content-type:application/json"
+
+	paddingLength := 371
+	for i := 0; i < paddingLength; i++ {
+		f.Padding += "b"
+	}
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, binary.BigEndian.Uint16(marshalled[8:10]),
+		uint16(len(f.Padding)),
+		"Padding length should have been equal to length of padding")
+
+	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+		"Padding low flag should have been set")
+	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0x10),
+		"Padding high flag should have been set")
+
+	assert.Equal(t, marshalled[10:10 + len(f.HeaderBlockFragment)],
+		[]byte(f.HeaderBlockFragment),
+		"Header block fragment should have matched")
+	assert.Equal(t, marshalled[10 + len(f.HeaderBlockFragment):],
+		[]byte(f.Padding),
+		"Padding should have matched")
 }
