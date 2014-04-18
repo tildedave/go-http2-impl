@@ -65,5 +65,4 @@ func (f PingFrame) Marshal() []byte {
 	bf.Payload = string(payload)
 
 	return bf.Marshal()
-
 }
