@@ -218,14 +218,73 @@ func TestMarshalDataFrameWithPaddingHighSet(t *testing.T) {
 
 func TestMarshalHeadersFrame(t *testing.T) {
 	f := HeadersFrame{}
+	f.HeaderBlockFragment = "accept-encoding:gzip"
+
 	marshalled := f.Marshal()
 
 	assert.Equal(t, frameType(marshalled), byte(0x01),
 		"Type of HEADERS frame should have been 0x01")
+
+	assert.Equal(t,
+		marshalled[8:],
+		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalHeadersFrameWithPadding(t *testing.T) {
+func TestMarshalHeadersFrameWithPriorityGroup(t *testing.T) {
 	f := HeadersFrame{}
+	f.PriorityGroupIdentifier = 21984080
+	f.Weight = 123
+	f.HeaderBlockFragment = "accept-encoding:gzip"
+	f.Flags.PRIORITY_GROUP = true
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameFlags(marshalled) & 0x20, byte(0x20),
+		"Flag for PRIORITY_GROUP should have been set")
+
+	assert.Equal(t, marshalled[8] & 0x80, byte(0x80),
+		"R bit for PRIORITY_GROUP should have been set")
+
+	assert.Equal(t,
+		binary.BigEndian.Uint32(marshalled[8:12]) ^ 0x80000000,
+		f.PriorityGroupIdentifier,
+		"Priority group identifier did not match")
+
+	assert.Equal(t, marshalled[12], byte(f.Weight), "Weight did not match")
+
+	assert.Equal(t,
+		marshalled[13:],
+		[]byte("accept-encoding:gzip"))
+}
+
+func TestMarshalHeadersFrameWithPriorityDependency(t *testing.T) {
+	f := HeadersFrame{}
+	f.StreamDependency = 39781097
+	f.Flags.PRIORITY_DEPENDENCY = true
+	f.HeaderBlockFragment = "accept-encoding:gzip"
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameFlags(marshalled) & 0x40, byte(0x40),
+		"Flag for PRIORITY_DEPENDENCY should have been set")
+
+	assert.Equal(t, marshalled[8] & 0x80, byte(0x80),
+		"E bit for PRIORITY_DEPENDENCY should have been set")
+
+	assert.Equal(t,
+		binary.BigEndian.Uint32(marshalled[8:12]) ^ 0x80000000,
+		f.StreamDependency,
+		"Stream dependency did not match")
+
+	assert.Equal(t,
+		marshalled[12:],
+		[]byte("accept-encoding:gzip"))
+}
+
+func TestMarshalHeadersFrameWithSmallAmountOfPadding(t *testing.T) {
+	f := HeadersFrame{}
+	f.Padding = "This is less than 256 padding"
+
 	marshalled := f.Marshal()
 
 	assert.Equal(t, frameType(marshalled), byte(0x01),

@@ -131,7 +131,6 @@ func (f DataFrame) Marshal() []byte {
 	if (f.Flags.END_STREAM) {
 		bf.Flags |= 0x01
 	}
-
 	if (f.Flags.END_SEGMENT) {
 		bf.Flags |= 0x02
 	}
@@ -142,6 +141,25 @@ func (f DataFrame) Marshal() []byte {
 func (f HeadersFrame) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x1
+
+	payload := make([]byte, 0, 5)
+
+	if f.Flags.PRIORITY_GROUP {
+		payload = payload[0:5]
+		binary.BigEndian.PutUint32(payload, f.PriorityGroupIdentifier)
+		payload[0] |= 0x80
+		payload[4] = f.Weight
+		bf.Flags |= 0x20
+
+	} else if f.Flags.PRIORITY_DEPENDENCY {
+		payload = payload[0:4]
+		binary.BigEndian.PutUint32(payload, f.StreamDependency)
+		payload[0] |= 0x80
+
+		bf.Flags |= 0x40
+	}
+	bf.Payload = string(append(payload, f.HeaderBlockFragment...))
+
 
 	return bf.Marshal()
 }
