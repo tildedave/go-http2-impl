@@ -133,3 +133,72 @@ func TestMarshalPingFrameDoesNotIncludeAckIfUnset(t *testing.T) {
 	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0),
 		"Ping frame without ACK flag should not have had 0x1 flag bit set")
 }
+
+func TestMarshalDataFrameWithoutPadding(t *testing.T) {
+	f := DataFrame{}
+	f.Data = "This is the data associated with the data frame"
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), uint8(0x0),
+		"Data frame should have type 0x0")
+	assert.Equal(t, frameLength(marshalled), uint16(len(f.Data) + 2))
+
+	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0),
+		"Padding low flag should not have been set")
+	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0),
+		"Padding high flag should not have been set")
+
+	assert.Equal(t, []byte(f.Data), marshalled[10:], "Data did not match")
+}
+
+func TestMarshalDataFrameWithSmallAmountOfPadding(t *testing.T) {
+	f := DataFrame{}
+	f.Data = "This is the data associated with the frame"
+	f.Padding = "This padding is less than 256 bytes"
+
+	marshalled := f.Marshal()
+	expectedLength := uint16(len(f.Data) + len(f.Padding) + 2)
+
+	assert.Equal(t, frameLength(marshalled), expectedLength,
+		"Length did not include the data, the padding, and the padding header fields")
+
+	t.Log(frameFlags(marshalled))
+	t.Log(marshalled)
+
+	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+		"Padding low flag should have been set")
+	assert.Equal(t, marshalled[8], uint8(0),
+		"Padding high should have been unset")
+	assert.Equal(t, marshalled[9], uint8(len(f.Padding)),
+		"Padding low should have been the length of the padding")
+	assert.Equal(t, marshalled[10:10 + len(f.Data)], []byte(f.Data),
+		"Data did not match")
+	assert.Equal(t, marshalled[10 + len(f.Data):], []byte(f.Padding),
+		"Padding did not match")
+}
+
+func TestMarshalDataFrameWithPaddingHighSet(t *testing.T) {
+	f := DataFrame{}
+	f.Data = "This is the data associated with the data frame"
+
+	paddingLength := 310
+	for i := 0; i < paddingLength; i++ {
+		f.Padding += "a"
+	}
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+		"Padding low flag should have been set")
+	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0x10),
+		"Padding high flag should have been set")
+
+	assert.Equal(t, binary.BigEndian.Uint16(marshalled[8:10]),
+		uint16(len(f.Padding)),
+		"Padding length should have been equal to length of padding")
+	assert.Equal(t, marshalled[10:10 + len(f.Data)], []byte(f.Data),
+		"Data did not match")
+	assert.Equal(t, marshalled[10 + len(f.Data):], []byte(f.Padding),
+		"Padding did not match")
+}

@@ -25,6 +25,16 @@ type GOAWAYFrame struct {
 	AdditionalDebugData string
 }
 
+type DataFrame struct {
+	Data string
+	Padding string
+
+	Flags struct {
+		END_STREAM bool
+		END_SEGMENT bool
+	}
+}
+
 type Frame interface {
 	Marshal() string
 }
@@ -63,6 +73,32 @@ func (f PingFrame) Marshal() []byte {
 	payload := make([]byte, 8)
 	binary.BigEndian.PutUint64(payload, f.OpaqueData)
 	bf.Payload = string(payload)
+
+	return bf.Marshal()
+}
+
+func (f DataFrame) Marshal() []byte {
+	bf := baseFrame{}
+	bf.Type = 0x0
+
+	paddingLength := uint16(len(f.Padding))
+
+	payload := make([]byte, 2 + len(f.Data) + len(f.Padding))
+	binary.BigEndian.PutUint16(payload, paddingLength)
+
+	copy(payload[2:], []byte(f.Data))
+	copy(payload[2 + len(f.Data):], []byte(f.Padding))
+	bf.Payload = string(payload)
+
+	if paddingLength > 0 {
+		// set PADDING_LOW flag
+		bf.Flags |= 0x08
+
+		if paddingLength > 256 {
+			// set PADDING_HIGH flag
+			bf.Flags |= 0x10
+		}
+	}
 
 	return bf.Marshal()
 }
