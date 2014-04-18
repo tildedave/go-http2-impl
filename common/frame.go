@@ -19,12 +19,7 @@ type PingFrame struct {
 	}
 }
 
-type GOAWAYFrame struct {
-	LastStreamId uint32
-	ErrorCode uint32
-	AdditionalDebugData string
-}
-
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
 type DataFrame struct {
 	Data string
 	Padding string
@@ -33,6 +28,34 @@ type DataFrame struct {
 		END_STREAM bool
 		END_SEGMENT bool
 	}
+}
+
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
+type HeadersFrame struct {
+
+	PriorityGroupIdentifier uint32
+	Weight uint8
+	StreamDependency uint32
+	HeaderBlockFragment string
+	Padding string
+
+	// Not sure what E and R bit flags are for -- seems to be covered
+	// by header flag already?
+
+	Flags struct {
+		END_STREAM bool
+		END_SEGMENT bool
+		END_HEADERS bool
+		PRIORITY_GROUP bool
+		PRIORITY_DEPENDENCY bool
+	}
+}
+
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.8
+type GOAWAYFrame struct {
+	LastStreamId uint32
+	ErrorCode uint32
+	AdditionalDebugData string
 }
 
 type Frame interface {
@@ -107,6 +130,13 @@ func (f DataFrame) Marshal() []byte {
 	if (f.Flags.END_SEGMENT) {
 		bf.Flags |= 0x02
 	}
+
+	return bf.Marshal()
+}
+
+func (f HeadersFrame) Marshal() []byte {
+	bf := baseFrame{}
+	bf.Type = 0x1
 
 	return bf.Marshal()
 }

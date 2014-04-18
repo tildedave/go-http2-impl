@@ -220,3 +220,19 @@ func TestMarshalDataFrameWithPaddingHighSet(t *testing.T) {
 	assert.Equal(t, marshalled[10 + len(f.Data):], []byte(f.Padding),
 		"Padding did not match")
 }
+
+func TestMarshalHeadersFrame(t *testing.T) {
+	f := HeadersFrame{}
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), byte(0x01),
+		"Type of HEADERS frame should have been 0x01")
+}
+
+func TestMarshalHeadersFrameWithPadding(t *testing.T) {
+	f := HeadersFrame{}
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), byte(0x01),
+		"Type of HEADERS frame should have been 0x01")
+}
