@@ -331,3 +331,30 @@ func TestMarshalHeadersFrameWithPaddingHighSet(t *testing.T) {
 		[]byte(f.Padding),
 		"Padding should have matched")
 }
+
+func TestMarshalHeadersFrameWithEndStreamFlag(t *testing.T) {
+	f := HeadersFrame{}
+	f.Flags.END_STREAM = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0x1),
+		"Headers frame should have end stream flag set")
+}
+
+func TestMarshalHeadersFrameWithEndSegmentFlag(t *testing.T) {
+	f := HeadersFrame{}
+	f.Flags.END_SEGMENT = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameFlags(marshalled) & 0x2, uint8(0x2),
+		"Headers frame should have end segment flag set")
+}
+
+func TestMarshalHeadersFrameWithEndHeadersFlag(t *testing.T) {
+	f := HeadersFrame{}
+	f.Flags.END_HEADERS = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameFlags(marshalled) & 0x4, uint8(0x4),
+		"Headers frame should have end headers flag set")
+}

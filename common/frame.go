@@ -168,5 +168,16 @@ func (f HeadersFrame) Marshal() []byte {
 
 	bf.Payload = string(payload)
 
+
+	if (f.Flags.END_STREAM) {
+		bf.Flags |= 0x01
+	}
+	if (f.Flags.END_SEGMENT) {
+		bf.Flags |= 0x02
+	}
+	if (f.Flags.END_HEADERS) {
+		bf.Flags |= 0x04
+	}
+
 	return bf.Marshal()
 }
