@@ -123,11 +123,9 @@ func (f DataFrame) Marshal() []byte {
 		}
 	}
 
-	payload := make([]byte, len(paddingHeaders) + len(f.Data) + len(f.Padding))
-	copy(payload, paddingHeaders)
-	copy(payload[len(paddingHeaders):], []byte(f.Data))
-	copy(payload[len(paddingHeaders) + len(f.Data):], []byte(f.Padding))
-
+	payload := paddingHeaders
+	payload = append(payload, f.Data...)
+	payload = append(payload, f.Padding...)
 	bf.Payload = string(payload)
 
 	if (f.Flags.END_STREAM) {
