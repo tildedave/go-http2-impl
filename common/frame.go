@@ -12,15 +12,8 @@ type baseFrame struct {
 	Payload string
 }
 
-type PingFrame struct {
-	OpaqueData uint64
-	Flags struct {
-		ACK bool
-	}
-}
-
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
-type DataFrame struct {
+type Frame_DATA struct {
 	Data string
 	Padding string
 
@@ -31,16 +24,12 @@ type DataFrame struct {
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
-type HeadersFrame struct {
-
+type Frame_HEADERS struct {
 	PriorityGroupIdentifier uint32
 	Weight uint8
 	StreamDependency uint32
 	HeaderBlockFragment string
 	Padding string
-
-	// Not sure what E and R bit flags are for -- seems to be covered
-	// by header flag already?
 
 	Flags struct {
 		END_STREAM bool
@@ -51,8 +40,16 @@ type HeadersFrame struct {
 	}
 }
 
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.7
+type Frame_PING struct {
+	OpaqueData uint64
+	Flags struct {
+		ACK bool
+	}
+}
+
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.8
-type GOAWAYFrame struct {
+type Frame_GOAWAY struct {
 	LastStreamId uint32
 	ErrorCode uint32
 	AdditionalDebugData string
@@ -72,7 +69,7 @@ func (f baseFrame) Marshal() []byte {
 	return append(header, f.Payload...)
 }
 
-func (f GOAWAYFrame) Marshal() []byte {
+func (f Frame_GOAWAY) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x7
 
@@ -86,7 +83,7 @@ func (f GOAWAYFrame) Marshal() []byte {
 	return bf.Marshal()
 }
 
-func (f PingFrame) Marshal() []byte {
+func (f Frame_PING) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x6
 	if (f.Flags.ACK) {
@@ -122,7 +119,7 @@ func paddingHeaders(bf* baseFrame, padding string) []byte {
 	return paddingHeaders
 }
 
-func (f DataFrame) Marshal() []byte {
+func (f Frame_DATA) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x0
 
@@ -141,7 +138,7 @@ func (f DataFrame) Marshal() []byte {
 	return bf.Marshal()
 }
 
-func (f HeadersFrame) Marshal() []byte {
+func (f Frame_HEADERS) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x1
 
@@ -167,7 +164,6 @@ func (f HeadersFrame) Marshal() []byte {
 	payload = append(payload, f.Padding...)
 
 	bf.Payload = string(payload)
-
 
 	if (f.Flags.END_STREAM) {
 		bf.Flags |= 0x01
