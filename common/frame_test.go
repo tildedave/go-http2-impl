@@ -142,14 +142,14 @@ func TestMarshalDataFrameWithoutPadding(t *testing.T) {
 
 	assert.Equal(t, frameType(marshalled), uint8(0x0),
 		"Data frame should have type 0x0")
-	assert.Equal(t, frameLength(marshalled), uint16(len(f.Data) + 2))
+	assert.Equal(t, frameLength(marshalled), uint16(len(f.Data)))
 
 	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0),
 		"Padding low flag should not have been set")
 	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0),
 		"Padding high flag should not have been set")
 
-	assert.Equal(t, []byte(f.Data), marshalled[10:], "Data did not match")
+	assert.Equal(t, []byte(f.Data), marshalled[8:], "Data did not match")
 }
 
 func TestMarshalDataFrameWithEndStreamFlag(t *testing.T) {
@@ -176,23 +176,18 @@ func TestMarshalDataFrameWithSmallAmountOfPadding(t *testing.T) {
 	f.Padding = "This padding is less than 256 bytes"
 
 	marshalled := f.Marshal()
-	expectedLength := uint16(len(f.Data) + len(f.Padding) + 2)
+	expectedLength := uint16(len(f.Data) + len(f.Padding) + 1)
 
 	assert.Equal(t, frameLength(marshalled), expectedLength,
 		"Length did not include the data, the padding, and the padding header fields")
 
-	t.Log(frameFlags(marshalled))
-	t.Log(marshalled)
-
 	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
 		"Padding low flag should have been set")
-	assert.Equal(t, marshalled[8], uint8(0),
-		"Padding high should have been unset")
-	assert.Equal(t, marshalled[9], uint8(len(f.Padding)),
+	assert.Equal(t, marshalled[8], uint8(len(f.Padding)),
 		"Padding low should have been the length of the padding")
-	assert.Equal(t, marshalled[10:10 + len(f.Data)], []byte(f.Data),
+	assert.Equal(t, marshalled[9:9 + len(f.Data)], []byte(f.Data),
 		"Data did not match")
-	assert.Equal(t, marshalled[10 + len(f.Data):], []byte(f.Padding),
+	assert.Equal(t, marshalled[9 + len(f.Data):], []byte(f.Padding),
 		"Padding did not match")
 }
 

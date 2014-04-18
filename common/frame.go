@@ -106,13 +106,7 @@ func (f DataFrame) Marshal() []byte {
 
 	paddingLength := uint16(len(f.Padding))
 
-	payload := make([]byte, 2 + len(f.Data) + len(f.Padding))
-	binary.BigEndian.PutUint16(payload, paddingLength)
-
-	copy(payload[2:], []byte(f.Data))
-	copy(payload[2 + len(f.Data):], []byte(f.Padding))
-	bf.Payload = string(payload)
-
+	paddingHeaders := make([]byte, 0, 2)
 	if paddingLength > 0 {
 		// set PADDING_LOW flag
 		bf.Flags |= 0x08
@@ -120,8 +114,21 @@ func (f DataFrame) Marshal() []byte {
 		if paddingLength > 256 {
 			// set PADDING_HIGH flag
 			bf.Flags |= 0x10
+			paddingHeaders = paddingHeaders[0:2]
+			binary.BigEndian.PutUint16(paddingHeaders, paddingLength)
+
+		} else {
+			paddingHeaders = paddingHeaders[0:1]
+			paddingHeaders[0] = uint8(paddingLength)
 		}
 	}
+
+	payload := make([]byte, len(paddingHeaders) + len(f.Data) + len(f.Padding))
+	copy(payload, paddingHeaders)
+	copy(payload[len(paddingHeaders):], []byte(f.Data))
+	copy(payload[len(paddingHeaders) + len(f.Data):], []byte(f.Padding))
+
+	bf.Payload = string(payload)
 
 	if (f.Flags.END_STREAM) {
 		bf.Flags |= 0x01
