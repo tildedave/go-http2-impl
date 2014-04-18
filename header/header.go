@@ -140,19 +140,22 @@ var StaticTableReverse = map[HeaderField]int{
 	HeaderField{"www-authenticate", ""}: 61,
 }
 
-func Encode(hset HeaderSet) []byte {
+func Encode(hset HeaderSet) string {
 	if len(hset.Headers) == 0 {
-		return []byte{}
+		return ""
 	}
 
-	encodedHeader := make([]byte, 1)
+	encodedHeaders := make([]byte, 0)
 	for _, header := range hset.Headers {
 		idx := StaticTableReverse[header]
 		if idx != 0 {
+			encodedHeader := make([]byte, 1)
 			encodedHeader[0] = byte(idx)
 			encodedHeader[0] |= 0x80
+
+			encodedHeaders = append(encodedHeaders, encodedHeader...)
 		}
 	}
 
-	return encodedHeader
+	return string(encodedHeaders)
 }
