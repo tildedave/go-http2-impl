@@ -5,8 +5,7 @@ type HeaderField struct {
 	Value string
 }
 
-type HeaderTable struct {
-}
+type HeaderTable []HeaderField
 
 type HeaderSet struct {
 	Headers []HeaderField
@@ -140,21 +139,30 @@ var StaticTableReverse = map[HeaderField]int{
 	HeaderField{"www-authenticate", ""}: 61,
 }
 
-func Encode(hset HeaderSet) string {
-	if len(hset.Headers) == 0 {
-		return ""
+func Encode(header HeaderField) string {
+	encodedHeaders := make([]byte, 0)
+
+	idx := StaticTableReverse[header]
+	if idx != 0 {
+		h := make([]byte, 1)
+		h[0] = byte(idx)
+		h[0] |= 0x80
+
+		encodedHeaders = append(encodedHeaders, h...)
+		return string(encodedHeaders)
 	}
 
-	encodedHeaders := make([]byte, 0)
-	for _, header := range hset.Headers {
-		idx := StaticTableReverse[header]
-		if idx != 0 {
-			encodedHeader := make([]byte, 1)
-			encodedHeader[0] = byte(idx)
-			encodedHeader[0] |= 0x80
+	onlyName := HeaderField{header.Name, ""}
+	idx = StaticTableReverse[onlyName]
+	if idx != 0 {
+		// http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#section-4.3.1
+		h := make([]byte, 2)
+		h[0] = byte(idx)
+		h[0] |= 0x40
+		h[1] = byte(len(header.Value))
 
-			encodedHeaders = append(encodedHeaders, encodedHeader...)
-		}
+		encodedHeaders = append(encodedHeaders, h...)
+		encodedHeaders = append(encodedHeaders, header.Value...)
 	}
 
 	return string(encodedHeaders)

@@ -7,26 +7,20 @@ import (
 	"testing"
 )
 
-func singleHeaderField(name string, value string) HeaderSet {
-	return HeaderSet{[]HeaderField{HeaderField{name, value}}}
-}
-
 func twoHeaderFields(name1 string, value1 string, name2 string, value2 string) HeaderSet {
 	return HeaderSet{[]HeaderField{HeaderField{name1, value1},
 		HeaderField{name2, value2}}}
 }
 
-func TestEncodeNoHeadersIsNothing(t *testing.T) {
-	assert.Equal(t, Encode(HeaderSet{}), "")
+func TestEncodeHeaderFieldFromStaticTable(t *testing.T) {
+	assert.Equal(t, Encode(HeaderField{":method", "GET"}), "\x82")
+	assert.Equal(t, Encode(HeaderField{":method", "POST"}), "\x83")
+	assert.Equal(t, Encode(HeaderField{":path", "/"}), "\x84")
 }
 
-func TestEncodeIndexedHeaderFieldFromStaticTable(t *testing.T) {
-	assert.Equal(t, Encode(singleHeaderField(":method", "GET")), "\x82")
-	assert.Equal(t, Encode(singleHeaderField(":method", "POST")), "\x83")
-	assert.Equal(t, Encode(singleHeaderField(":path", "/")), "\x84")
-}
+func TestEncodeHeaderFieldWithNameAndLiteralValue(t *testing.T) {
+	// From http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#appendix-D.3
+	h := Encode(HeaderField{":authority", "www.example.com"})
 
-func TestEncodeIndexedHeaderFieldsFromStaticTable(t *testing.T) {
-	assert.Equal(t, Encode(twoHeaderFields(":method", "GET", ":path", "/")),
-		"\x82\x84")
+	assert.Equal(t, h, "\x44\x0f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
 }
