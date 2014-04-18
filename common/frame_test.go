@@ -24,14 +24,14 @@ func frameFlags(marshalled []byte) uint8 {
 }
 
 func TestMarshalEmptyFrame(t *testing.T) {
-	f := baseFrame{}
+	f := base{}
 
 	assert.Equal(t, frameLength(f.Marshal()), uint16(0),
 		"Length should have been nothing")
 }
 
 func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
-	f := baseFrame{}
+	f := base{}
 	f.Payload = "this is the payload of the frame"
 
 	marshalled := f.Marshal()
@@ -42,7 +42,7 @@ func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 }
 
 func TestMarshalFrameWithType(t *testing.T) {
-	f := baseFrame{}
+	f := base{}
 	f.Type = uint8(8)
 
 	assert.Equal(t, uint8(8), frameType(f.Marshal()),
@@ -50,7 +50,7 @@ func TestMarshalFrameWithType(t *testing.T) {
 }
 
 func TestMarshalFrameWithFlags(t *testing.T) {
-	f := baseFrame{}
+	f := base{}
 	f.Flags = uint8(0xD)
 
 	assert.Equal(t, uint8(0xD), frameFlags(f.Marshal()),
@@ -58,7 +58,7 @@ func TestMarshalFrameWithFlags(t *testing.T) {
 }
 
 func TestMarshalFrameWithStreamIdentifier(t *testing.T) {
-	f := baseFrame{}
+	f := base{}
 	f.StreamIdentifier = 168036609
 
 	marshalled := f.Marshal()
@@ -361,5 +361,38 @@ func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
 
 func TestMarshalSETTINGS(t *testing.T) {
 	f := SETTINGS{}
-	f.Parameters = []SETTINGS_Parameter{}
+	f.Parameters = []Parameter{ { uint8(1), uint32(1298431729) },
+		{ uint8(2), uint32(1478921795) } }
+
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), uint8(0x4),
+		"Expected frame type of settings to be 0x4")
+	assert.Equal(t, frameLength(marshalled), uint16(10),
+		"Expected frame length to be 10 octets (two parameters)")
+
+	assert.Equal(t, marshalled[8],
+		f.Parameters[0].Identifier,
+		"Expected first frame parameter to match")
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[9:13]),
+		f.Parameters[0].Value,
+		"Expected first frame value to match")
+	assert.Equal(t, marshalled[13],
+		f.Parameters[1].Identifier,
+		"Expected second frame parameter to match")
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[14:18]),
+		f.Parameters[1].Value,
+		"Expected second frame value to match")
+}
+
+func TestMarshalSETTINGSWithACKFlag(t *testing.T) {
+	f := SETTINGS{}
+	f.Flags.ACK = true
+
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0x1),
+		"Expected frame to have set ACK flag of 0x1")
 }

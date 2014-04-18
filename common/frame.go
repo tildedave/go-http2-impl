@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 )
 
-// baseFrame is used internally to marshal other types of frames
-type baseFrame struct {
+// base is used internally to marshal other types of frames
+type base struct {
 	Type uint8
 	Flags uint8
 	StreamIdentifier uint32
@@ -41,13 +41,16 @@ type HEADERS struct {
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#page-35
-type SETTINGS_Parameter struct {
+type Parameter struct {
 	Identifier uint8
 	Value uint32
 }
 
 type SETTINGS struct {
-	Parameters []SETTINGS_Parameter
+	Parameters []Parameter
+	Flags struct {
+		ACK bool
+	}
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.7
@@ -69,7 +72,7 @@ type Frame interface {
 	Marshal() string
 }
 
-func (f baseFrame) Marshal() []byte {
+func (f base) Marshal() []byte {
 	header := make([]byte, 8)
 	binary.BigEndian.PutUint16(header, uint16(len(f.Payload)))
 	header[2] = f.Type
@@ -80,43 +83,43 @@ func (f baseFrame) Marshal() []byte {
 }
 
 func (f GOAWAY) Marshal() []byte {
-	bf := baseFrame{}
-	bf.Type = 0x7
+	b := base{}
+	b.Type = 0x7
 
 	payload := make([]byte, 8 + len(f.AdditionalDebugData))
 	binary.BigEndian.PutUint32(payload[0:4], f.LastStreamId)
 	binary.BigEndian.PutUint32(payload[4:8], f.ErrorCode)
 	copy(payload, f.AdditionalDebugData)
 
-	bf.Payload = string(payload)
+	b.Payload = string(payload)
 
-	return bf.Marshal()
+	return b.Marshal()
 }
 
 func (f PING) Marshal() []byte {
-	bf := baseFrame{}
-	bf.Type = 0x6
+	b := base{}
+	b.Type = 0x6
 	if (f.Flags.ACK) {
-		bf.Flags = 0x1
+		b.Flags = 0x1
 	}
 
 	payload := make([]byte, 8)
 	binary.BigEndian.PutUint64(payload, f.OpaqueData)
-	bf.Payload = string(payload)
+	b.Payload = string(payload)
 
-	return bf.Marshal()
+	return b.Marshal()
 }
 
-func paddingHeaders(bf* baseFrame, padding string) []byte {
+func paddingHeaders(b* base, padding string) []byte {
 	paddingHeaders := make([]byte, 0, 2)
 	paddingLength := uint16(len(padding))
 	if paddingLength > 0 {
 		// set PADDING_LOW flag
-		bf.Flags |= 0x08
+		b.Flags |= 0x08
 
 		if paddingLength > 256 {
 			// set PADDING_HIGH flag
-			bf.Flags |= 0x10
+			b.Flags |= 0x10
 			paddingHeaders = paddingHeaders[0:2]
 			binary.BigEndian.PutUint16(paddingHeaders, paddingLength)
 
@@ -130,27 +133,27 @@ func paddingHeaders(bf* baseFrame, padding string) []byte {
 }
 
 func (f DATA) Marshal() []byte {
-	bf := baseFrame{}
-	bf.Type = 0x0
+	b := base{}
+	b.Type = 0x0
 
-	payload := paddingHeaders(&bf, f.Padding)
+	payload := paddingHeaders(&b, f.Padding)
 	payload = append(payload, f.Data...)
 	payload = append(payload, f.Padding...)
-	bf.Payload = string(payload)
+	b.Payload = string(payload)
 
 	if (f.Flags.END_STREAM) {
-		bf.Flags |= 0x01
+		b.Flags |= 0x01
 	}
 	if (f.Flags.END_SEGMENT) {
-		bf.Flags |= 0x02
+		b.Flags |= 0x02
 	}
 
-	return bf.Marshal()
+	return b.Marshal()
 }
 
 func (f HEADERS) Marshal() []byte {
-	bf := baseFrame{}
-	bf.Type = 0x1
+	b := base{}
+	b.Type = 0x1
 
 	flagHeaders := make([]byte, 0, 5)
 	if f.Flags.PRIORITY_GROUP {
@@ -158,32 +161,50 @@ func (f HEADERS) Marshal() []byte {
 		binary.BigEndian.PutUint32(flagHeaders, f.PriorityGroupIdentifier)
 		flagHeaders[0] |= 0x80
 		flagHeaders[4] = f.Weight
-		bf.Flags |= 0x20
+		b.Flags |= 0x20
 
 	} else if f.Flags.PRIORITY_DEPENDENCY {
 		flagHeaders = flagHeaders[0:4]
 		binary.BigEndian.PutUint32(flagHeaders, f.StreamDependency)
 		flagHeaders[0] |= 0x80
 
-		bf.Flags |= 0x40
+		b.Flags |= 0x40
 	}
 
-	payload := paddingHeaders(&bf, f.Padding)
+	payload := paddingHeaders(&b, f.Padding)
 	payload = append(payload, flagHeaders...)
 	payload = append(payload, f.HeaderBlockFragment...)
 	payload = append(payload, f.Padding...)
 
-	bf.Payload = string(payload)
+	b.Payload = string(payload)
 
 	if (f.Flags.END_STREAM) {
-		bf.Flags |= 0x01
+		b.Flags |= 0x01
 	}
 	if (f.Flags.END_SEGMENT) {
-		bf.Flags |= 0x02
+		b.Flags |= 0x02
 	}
 	if (f.Flags.END_HEADERS) {
-		bf.Flags |= 0x04
+		b.Flags |= 0x04
 	}
 
-	return bf.Marshal()
+	return b.Marshal()
+}
+
+func (f SETTINGS) Marshal() []byte {
+	b := base{}
+	b.Type = 0x4
+
+	payload := make([]byte, len(f.Parameters) * 5)
+	for i, parameter := range f.Parameters {
+		payload[i  * 5] = parameter.Identifier
+		binary.BigEndian.PutUint32(payload[i * 5 + 1:], parameter.Value)
+	}
+	b.Payload = string(payload)
+
+	if (f.Flags.ACK) {
+		b.Flags |= 0x1
+	}
+
+	return b.Marshal()
 }
