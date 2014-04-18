@@ -2,10 +2,9 @@ package common
 
 import (
 	"encoding/binary"
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
-
 
 type stringWrapper struct {
 	data string
@@ -120,7 +119,7 @@ func TestMarshalPINGIncludesAckIfSet(t *testing.T) {
 
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(1),
+	assert.Equal(t, frameFlags(marshalled)&0x1, uint8(1),
 		"Ping frame with ACK flag should have had 0x1 flag bit set")
 }
 
@@ -130,7 +129,7 @@ func TestMarshalPINGDoesNotIncludeAckIfUnset(t *testing.T) {
 
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0),
+	assert.Equal(t, frameFlags(marshalled)&0x1, uint8(0),
 		"Ping frame without ACK flag should not have had 0x1 flag bit set")
 }
 
@@ -144,9 +143,9 @@ func TestMarshalDATAWithoutPadding(t *testing.T) {
 		"Data frame should have type 0x0")
 	assert.Equal(t, frameLength(marshalled), uint16(len(f.Data)))
 
-	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0),
+	assert.Equal(t, frameFlags(marshalled)&0x08, byte(0),
 		"Padding low flag should not have been set")
-	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0),
+	assert.Equal(t, frameFlags(marshalled)&0x10, byte(0),
 		"Padding high flag should not have been set")
 
 	assert.Equal(t, []byte(f.Data), marshalled[8:], "Data did not match")
@@ -157,7 +156,7 @@ func TestMarshalDATAWithEndStreamFlag(t *testing.T) {
 	f.Flags.END_STREAM = true
 
 	marshalled := f.Marshal()
-	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0x1),
+	assert.Equal(t, frameFlags(marshalled)&0x1, uint8(0x1),
 		"Data frame should have end stream flag set")
 }
 
@@ -166,7 +165,7 @@ func TestMarshalDATAWithEndSegmentFlag(t *testing.T) {
 	f.Flags.END_SEGMENT = true
 
 	marshalled := f.Marshal()
-	assert.Equal(t, frameFlags(marshalled) & 0x2, uint8(0x2),
+	assert.Equal(t, frameFlags(marshalled)&0x2, uint8(0x2),
 		"Data frame should have end segment flag set")
 }
 
@@ -181,13 +180,13 @@ func TestMarshalDATAWithSmallAmountOfPadding(t *testing.T) {
 	assert.Equal(t, frameLength(marshalled), expectedLength,
 		"Length did not include the data, the padding, and the padding header fields")
 
-	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+	assert.Equal(t, frameFlags(marshalled)&0x08, byte(0x08),
 		"Padding low flag should have been set")
 	assert.Equal(t, marshalled[8], uint8(len(f.Padding)),
 		"Padding low should have been the length of the padding")
-	assert.Equal(t, marshalled[9:9 + len(f.Data)], []byte(f.Data),
+	assert.Equal(t, marshalled[9:9+len(f.Data)], []byte(f.Data),
 		"Data did not match")
-	assert.Equal(t, marshalled[9 + len(f.Data):], []byte(f.Padding),
+	assert.Equal(t, marshalled[9+len(f.Data):], []byte(f.Padding),
 		"Padding did not match")
 }
 
@@ -202,17 +201,17 @@ func TestMarshalDATAWithPaddingHighSet(t *testing.T) {
 
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+	assert.Equal(t, frameFlags(marshalled)&0x08, byte(0x08),
 		"Padding low flag should have been set")
-	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0x10),
+	assert.Equal(t, frameFlags(marshalled)&0x10, byte(0x10),
 		"Padding high flag should have been set")
 
 	assert.Equal(t, binary.BigEndian.Uint16(marshalled[8:10]),
 		uint16(len(f.Padding)),
 		"Padding length should have been equal to length of padding")
-	assert.Equal(t, marshalled[10:10 + len(f.Data)], []byte(f.Data),
+	assert.Equal(t, marshalled[10:10+len(f.Data)], []byte(f.Data),
 		"Data did not match")
-	assert.Equal(t, marshalled[10 + len(f.Data):], []byte(f.Padding),
+	assert.Equal(t, marshalled[10+len(f.Data):], []byte(f.Padding),
 		"Padding did not match")
 }
 
@@ -239,14 +238,14 @@ func TestMarshalHEADERSWithPriorityGroup(t *testing.T) {
 
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameFlags(marshalled) & 0x20, byte(0x20),
+	assert.Equal(t, frameFlags(marshalled)&0x20, byte(0x20),
 		"Flag for PRIORITY_GROUP should have been set")
 
-	assert.Equal(t, marshalled[8] & 0x80, byte(0x80),
+	assert.Equal(t, marshalled[8]&0x80, byte(0x80),
 		"R bit for PRIORITY_GROUP should have been set")
 
 	assert.Equal(t,
-		binary.BigEndian.Uint32(marshalled[8:12]) ^ 0x80000000,
+		binary.BigEndian.Uint32(marshalled[8:12])^0x80000000,
 		f.PriorityGroupIdentifier,
 		"Priority group identifier did not match")
 
@@ -265,14 +264,14 @@ func TestMarshalHEADERSWithPriorityDependency(t *testing.T) {
 
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameFlags(marshalled) & 0x40, byte(0x40),
+	assert.Equal(t, frameFlags(marshalled)&0x40, byte(0x40),
 		"Flag for PRIORITY_DEPENDENCY should have been set")
 
-	assert.Equal(t, marshalled[8] & 0x80, byte(0x80),
+	assert.Equal(t, marshalled[8]&0x80, byte(0x80),
 		"E bit for PRIORITY_DEPENDENCY should have been set")
 
 	assert.Equal(t,
-		binary.BigEndian.Uint32(marshalled[8:12]) ^ 0x80000000,
+		binary.BigEndian.Uint32(marshalled[8:12])^0x80000000,
 		f.StreamDependency,
 		"Stream dependency did not match")
 
@@ -292,14 +291,14 @@ func TestMarshalHEADERSWithSmallAmountOfPadding(t *testing.T) {
 		marshalled[8],
 		byte(len(f.Padding)))
 
-	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+	assert.Equal(t, frameFlags(marshalled)&0x08, byte(0x08),
 		"Padding low flag should have been set")
 	assert.Equal(t, marshalled[8], byte(len(f.Padding)),
 		"Padding low length should have been set")
-	assert.Equal(t, marshalled[9:9 + len(f.HeaderBlockFragment)],
+	assert.Equal(t, marshalled[9:9+len(f.HeaderBlockFragment)],
 		[]byte(f.HeaderBlockFragment),
 		"Header block fragment should have matched")
-	assert.Equal(t, marshalled[9 + len(f.HeaderBlockFragment):],
+	assert.Equal(t, marshalled[9+len(f.HeaderBlockFragment):],
 		[]byte(f.Padding),
 		"Padding should have matched")
 }
@@ -319,15 +318,15 @@ func TestMarshalHEADERSWithPaddingHighSet(t *testing.T) {
 		uint16(len(f.Padding)),
 		"Padding length should have been equal to length of padding")
 
-	assert.Equal(t, frameFlags(marshalled) & 0x08, byte(0x08),
+	assert.Equal(t, frameFlags(marshalled)&0x08, byte(0x08),
 		"Padding low flag should have been set")
-	assert.Equal(t, frameFlags(marshalled) & 0x10, byte(0x10),
+	assert.Equal(t, frameFlags(marshalled)&0x10, byte(0x10),
 		"Padding high flag should have been set")
 
-	assert.Equal(t, marshalled[10:10 + len(f.HeaderBlockFragment)],
+	assert.Equal(t, marshalled[10:10+len(f.HeaderBlockFragment)],
 		[]byte(f.HeaderBlockFragment),
 		"Header block fragment should have matched")
-	assert.Equal(t, marshalled[10 + len(f.HeaderBlockFragment):],
+	assert.Equal(t, marshalled[10+len(f.HeaderBlockFragment):],
 		[]byte(f.Padding),
 		"Padding should have matched")
 }
@@ -337,7 +336,7 @@ func TestMarshalHEADERSWithEndStreamFlag(t *testing.T) {
 	f.Flags.END_STREAM = true
 
 	marshalled := f.Marshal()
-	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0x1),
+	assert.Equal(t, frameFlags(marshalled)&0x1, uint8(0x1),
 		"Headers frame should have end stream flag set")
 }
 
@@ -346,7 +345,7 @@ func TestMarshalHEADERSWithEndSegmentFlag(t *testing.T) {
 	f.Flags.END_SEGMENT = true
 
 	marshalled := f.Marshal()
-	assert.Equal(t, frameFlags(marshalled) & 0x2, uint8(0x2),
+	assert.Equal(t, frameFlags(marshalled)&0x2, uint8(0x2),
 		"Headers frame should have end segment flag set")
 }
 
@@ -355,15 +354,14 @@ func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
 	f.Flags.END_HEADERS = true
 
 	marshalled := f.Marshal()
-	assert.Equal(t, frameFlags(marshalled) & 0x4, uint8(0x4),
+	assert.Equal(t, frameFlags(marshalled)&0x4, uint8(0x4),
 		"Headers frame should have end headers flag set")
 }
 
 func TestMarshalSETTINGS(t *testing.T) {
 	f := SETTINGS{}
-	f.Parameters = []Parameter{ { uint8(1), uint32(1298431729) },
-		{ uint8(2), uint32(1478921795) } }
-
+	f.Parameters = []Parameter{{uint8(1), uint32(1298431729)},
+		{uint8(2), uint32(1478921795)}}
 
 	marshalled := f.Marshal()
 
@@ -390,9 +388,8 @@ func TestMarshalSETTINGSWithACKFlag(t *testing.T) {
 	f := SETTINGS{}
 	f.Flags.ACK = true
 
-
 	marshalled := f.Marshal()
 
-	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0x1),
+	assert.Equal(t, frameFlags(marshalled)&0x1, uint8(0x1),
 		"Expected frame to have set ACK flag of 0x1")
 }

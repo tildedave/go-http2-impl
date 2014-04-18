@@ -6,19 +6,19 @@ import (
 
 // base is used internally to marshal other types of frames
 type base struct {
-	Type uint8
-	Flags uint8
+	Type             uint8
+	Flags            uint8
 	StreamIdentifier uint32
-	Payload string
+	Payload          string
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
 type DATA struct {
-	Data string
+	Data    string
 	Padding string
 
 	Flags struct {
-		END_STREAM bool
+		END_STREAM  bool
 		END_SEGMENT bool
 	}
 }
@@ -26,16 +26,16 @@ type DATA struct {
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
 type HEADERS struct {
 	PriorityGroupIdentifier uint32
-	Weight uint8
-	StreamDependency uint32
-	HeaderBlockFragment string
-	Padding string
+	Weight                  uint8
+	StreamDependency        uint32
+	HeaderBlockFragment     string
+	Padding                 string
 
 	Flags struct {
-		END_STREAM bool
-		END_SEGMENT bool
-		END_HEADERS bool
-		PRIORITY_GROUP bool
+		END_STREAM          bool
+		END_SEGMENT         bool
+		END_HEADERS         bool
+		PRIORITY_GROUP      bool
 		PRIORITY_DEPENDENCY bool
 	}
 }
@@ -43,12 +43,12 @@ type HEADERS struct {
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#page-35
 type Parameter struct {
 	Identifier uint8
-	Value uint32
+	Value      uint32
 }
 
 type SETTINGS struct {
 	Parameters []Parameter
-	Flags struct {
+	Flags      struct {
 		ACK bool
 	}
 }
@@ -56,15 +56,15 @@ type SETTINGS struct {
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.7
 type PING struct {
 	OpaqueData uint64
-	Flags struct {
+	Flags      struct {
 		ACK bool
 	}
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.8
 type GOAWAY struct {
-	LastStreamId uint32
-	ErrorCode uint32
+	LastStreamId        uint32
+	ErrorCode           uint32
 	AdditionalDebugData string
 }
 
@@ -86,7 +86,7 @@ func (f GOAWAY) Marshal() []byte {
 	b := base{}
 	b.Type = 0x7
 
-	payload := make([]byte, 8 + len(f.AdditionalDebugData))
+	payload := make([]byte, 8+len(f.AdditionalDebugData))
 	binary.BigEndian.PutUint32(payload[0:4], f.LastStreamId)
 	binary.BigEndian.PutUint32(payload[4:8], f.ErrorCode)
 	copy(payload, f.AdditionalDebugData)
@@ -99,7 +99,7 @@ func (f GOAWAY) Marshal() []byte {
 func (f PING) Marshal() []byte {
 	b := base{}
 	b.Type = 0x6
-	if (f.Flags.ACK) {
+	if f.Flags.ACK {
 		b.Flags = 0x1
 	}
 
@@ -110,7 +110,7 @@ func (f PING) Marshal() []byte {
 	return b.Marshal()
 }
 
-func paddingHeaders(b* base, padding string) []byte {
+func paddingHeaders(b *base, padding string) []byte {
 	paddingHeaders := make([]byte, 0, 2)
 	paddingLength := uint16(len(padding))
 	if paddingLength > 0 {
@@ -141,10 +141,10 @@ func (f DATA) Marshal() []byte {
 	payload = append(payload, f.Padding...)
 	b.Payload = string(payload)
 
-	if (f.Flags.END_STREAM) {
+	if f.Flags.END_STREAM {
 		b.Flags |= 0x01
 	}
-	if (f.Flags.END_SEGMENT) {
+	if f.Flags.END_SEGMENT {
 		b.Flags |= 0x02
 	}
 
@@ -178,13 +178,13 @@ func (f HEADERS) Marshal() []byte {
 
 	b.Payload = string(payload)
 
-	if (f.Flags.END_STREAM) {
+	if f.Flags.END_STREAM {
 		b.Flags |= 0x01
 	}
-	if (f.Flags.END_SEGMENT) {
+	if f.Flags.END_SEGMENT {
 		b.Flags |= 0x02
 	}
-	if (f.Flags.END_HEADERS) {
+	if f.Flags.END_HEADERS {
 		b.Flags |= 0x04
 	}
 
@@ -195,14 +195,14 @@ func (f SETTINGS) Marshal() []byte {
 	b := base{}
 	b.Type = 0x4
 
-	payload := make([]byte, len(f.Parameters) * 5)
+	payload := make([]byte, len(f.Parameters)*5)
 	for i, parameter := range f.Parameters {
-		payload[i  * 5] = parameter.Identifier
-		binary.BigEndian.PutUint32(payload[i * 5 + 1:], parameter.Value)
+		payload[i*5] = parameter.Identifier
+		binary.BigEndian.PutUint32(payload[i*5+1:], parameter.Value)
 	}
 	b.Payload = string(payload)
 
-	if (f.Flags.ACK) {
+	if f.Flags.ACK {
 		b.Flags |= 0x1
 	}
 
