@@ -100,5 +100,13 @@ func (f DataFrame) Marshal() []byte {
 		}
 	}
 
+	if (f.Flags.END_STREAM) {
+		bf.Flags |= 0x01
+	}
+
+	if (f.Flags.END_SEGMENT) {
+		bf.Flags |= 0x02
+	}
+
 	return bf.Marshal()
 }

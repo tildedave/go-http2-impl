@@ -152,6 +152,24 @@ func TestMarshalDataFrameWithoutPadding(t *testing.T) {
 	assert.Equal(t, []byte(f.Data), marshalled[10:], "Data did not match")
 }
 
+func TestMarshalDataFrameWithEndStreamFlag(t *testing.T) {
+	f := DataFrame{}
+	f.Flags.END_STREAM = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameFlags(marshalled) & 0x1, uint8(0x1),
+		"Data frame should have end stream flag set")
+}
+
+func TestMarshalDataFrameWithEndSegmentFlag(t *testing.T) {
+	f := DataFrame{}
+	f.Flags.END_SEGMENT = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameFlags(marshalled) & 0x2, uint8(0x2),
+		"Data frame should have end segment flag set")
+}
+
 func TestMarshalDataFrameWithSmallAmountOfPadding(t *testing.T) {
 	f := DataFrame{}
 	f.Data = "This is the data associated with the frame"
