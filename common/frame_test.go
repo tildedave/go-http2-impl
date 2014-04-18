@@ -69,8 +69,8 @@ func TestMarshalFrameWithStreamIdentifier(t *testing.T) {
 		"Stream identifier should have been marshalled as fifth through eighth octets")
 }
 
-func TestMarshalFrame_GOAWAY(t *testing.T) {
-	f := Frame_GOAWAY{}
+func TestMarshalGOAWAY(t *testing.T) {
+	f := GOAWAY{}
 	f.ErrorCode = 12487291
 
 	marshalled := f.Marshal()
@@ -87,8 +87,8 @@ func TestMarshalFrame_GOAWAY(t *testing.T) {
 		"Marshalled frame should have included last stream id")
 }
 
-func TestMarshalFrame_GOAWAYWithDebugInfoSetsLength(t *testing.T) {
-	f := Frame_GOAWAY{}
+func TestMarshalGOAWAYWithDebugInfoSetsLength(t *testing.T) {
+	f := GOAWAY{}
 	f.AdditionalDebugData = "This is some additional debug info to help you"
 
 	expectedLength := len(f.AdditionalDebugData) + 8
@@ -98,8 +98,8 @@ func TestMarshalFrame_GOAWAYWithDebugInfoSetsLength(t *testing.T) {
 		"Length should included the additional debug data")
 }
 
-func TestMarshalFrame_PING(t *testing.T) {
-	f := Frame_PING{}
+func TestMarshalPING(t *testing.T) {
+	f := PING{}
 	f.OpaqueData = 219748174981749872
 
 	marshalled := f.Marshal()
@@ -114,8 +114,8 @@ func TestMarshalFrame_PING(t *testing.T) {
 		"Ping frame must have had a length field value of 8")
 }
 
-func TestMarshalFrame_PINGIncludesAckIfSet(t *testing.T) {
-	f := Frame_PING{}
+func TestMarshalPINGIncludesAckIfSet(t *testing.T) {
+	f := PING{}
 	f.Flags.ACK = true
 
 	marshalled := f.Marshal()
@@ -124,8 +124,8 @@ func TestMarshalFrame_PINGIncludesAckIfSet(t *testing.T) {
 		"Ping frame with ACK flag should have had 0x1 flag bit set")
 }
 
-func TestMarshalFrame_PINGDoesNotIncludeAckIfUnset(t *testing.T) {
-	f := Frame_PING{}
+func TestMarshalPINGDoesNotIncludeAckIfUnset(t *testing.T) {
+	f := PING{}
 	f.Flags.ACK = false
 
 	marshalled := f.Marshal()
@@ -134,8 +134,8 @@ func TestMarshalFrame_PINGDoesNotIncludeAckIfUnset(t *testing.T) {
 		"Ping frame without ACK flag should not have had 0x1 flag bit set")
 }
 
-func TestMarshalFrame_DATAWithoutPadding(t *testing.T) {
-	f := Frame_DATA{}
+func TestMarshalDATAWithoutPadding(t *testing.T) {
+	f := DATA{}
 	f.Data = "This is the data associated with the data frame"
 
 	marshalled := f.Marshal()
@@ -152,8 +152,8 @@ func TestMarshalFrame_DATAWithoutPadding(t *testing.T) {
 	assert.Equal(t, []byte(f.Data), marshalled[8:], "Data did not match")
 }
 
-func TestMarshalFrame_DATAWithEndStreamFlag(t *testing.T) {
-	f := Frame_DATA{}
+func TestMarshalDATAWithEndStreamFlag(t *testing.T) {
+	f := DATA{}
 	f.Flags.END_STREAM = true
 
 	marshalled := f.Marshal()
@@ -161,8 +161,8 @@ func TestMarshalFrame_DATAWithEndStreamFlag(t *testing.T) {
 		"Data frame should have end stream flag set")
 }
 
-func TestMarshalFrame_DATAWithEndSegmentFlag(t *testing.T) {
-	f := Frame_DATA{}
+func TestMarshalDATAWithEndSegmentFlag(t *testing.T) {
+	f := DATA{}
 	f.Flags.END_SEGMENT = true
 
 	marshalled := f.Marshal()
@@ -170,8 +170,8 @@ func TestMarshalFrame_DATAWithEndSegmentFlag(t *testing.T) {
 		"Data frame should have end segment flag set")
 }
 
-func TestMarshalFrame_DATAWithSmallAmountOfPadding(t *testing.T) {
-	f := Frame_DATA{}
+func TestMarshalDATAWithSmallAmountOfPadding(t *testing.T) {
+	f := DATA{}
 	f.Data = "This is the data associated with the frame"
 	f.Padding = "This padding is less than 256 bytes"
 
@@ -191,8 +191,8 @@ func TestMarshalFrame_DATAWithSmallAmountOfPadding(t *testing.T) {
 		"Padding did not match")
 }
 
-func TestMarshalFrame_DATAWithPaddingHighSet(t *testing.T) {
-	f := Frame_DATA{}
+func TestMarshalDATAWithPaddingHighSet(t *testing.T) {
+	f := DATA{}
 	f.Data = "This is the data associated with the data frame"
 
 	paddingLength := 310
@@ -216,8 +216,8 @@ func TestMarshalFrame_DATAWithPaddingHighSet(t *testing.T) {
 		"Padding did not match")
 }
 
-func TestMarshalFrame_HEADERS(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERS(t *testing.T) {
+	f := HEADERS{}
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 
 	marshalled := f.Marshal()
@@ -230,8 +230,8 @@ func TestMarshalFrame_HEADERS(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalFrame_HEADERSWithPriorityGroup(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithPriorityGroup(t *testing.T) {
+	f := HEADERS{}
 	f.PriorityGroupIdentifier = 21984080
 	f.Weight = 123
 	f.HeaderBlockFragment = "accept-encoding:gzip"
@@ -257,8 +257,8 @@ func TestMarshalFrame_HEADERSWithPriorityGroup(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalFrame_HEADERSWithPriorityDependency(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithPriorityDependency(t *testing.T) {
+	f := HEADERS{}
 	f.StreamDependency = 39781097
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.HeaderBlockFragment = "accept-encoding:gzip"
@@ -281,8 +281,8 @@ func TestMarshalFrame_HEADERSWithPriorityDependency(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalFrame_HEADERSWithSmallAmountOfPadding(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithSmallAmountOfPadding(t *testing.T) {
+	f := HEADERS{}
 	f.HeaderBlockFragment = "content-type:application/json"
 	f.Padding = "This is less than 256 padding"
 
@@ -304,8 +304,8 @@ func TestMarshalFrame_HEADERSWithSmallAmountOfPadding(t *testing.T) {
 		"Padding should have matched")
 }
 
-func TestMarshalFrame_HEADERSWithPaddingHighSet(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithPaddingHighSet(t *testing.T) {
+	f := HEADERS{}
 	f.HeaderBlockFragment = "content-type:application/json"
 
 	paddingLength := 371
@@ -332,8 +332,8 @@ func TestMarshalFrame_HEADERSWithPaddingHighSet(t *testing.T) {
 		"Padding should have matched")
 }
 
-func TestMarshalFrame_HEADERSWithEndStreamFlag(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithEndStreamFlag(t *testing.T) {
+	f := HEADERS{}
 	f.Flags.END_STREAM = true
 
 	marshalled := f.Marshal()
@@ -341,8 +341,8 @@ func TestMarshalFrame_HEADERSWithEndStreamFlag(t *testing.T) {
 		"Headers frame should have end stream flag set")
 }
 
-func TestMarshalFrame_HEADERSWithEndSegmentFlag(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithEndSegmentFlag(t *testing.T) {
+	f := HEADERS{}
 	f.Flags.END_SEGMENT = true
 
 	marshalled := f.Marshal()
@@ -350,11 +350,16 @@ func TestMarshalFrame_HEADERSWithEndSegmentFlag(t *testing.T) {
 		"Headers frame should have end segment flag set")
 }
 
-func TestMarshalFrame_HEADERSWithEndHeadersFlag(t *testing.T) {
-	f := Frame_HEADERS{}
+func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
+	f := HEADERS{}
 	f.Flags.END_HEADERS = true
 
 	marshalled := f.Marshal()
 	assert.Equal(t, frameFlags(marshalled) & 0x4, uint8(0x4),
 		"Headers frame should have end headers flag set")
+}
+
+func TestMarshalSETTINGS(t *testing.T) {
+	f := SETTINGS{}
+	f.Parameters = []SETTINGS_Parameter{}
 }

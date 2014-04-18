@@ -13,7 +13,7 @@ type baseFrame struct {
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
-type Frame_DATA struct {
+type DATA struct {
 	Data string
 	Padding string
 
@@ -24,7 +24,7 @@ type Frame_DATA struct {
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
-type Frame_HEADERS struct {
+type HEADERS struct {
 	PriorityGroupIdentifier uint32
 	Weight uint8
 	StreamDependency uint32
@@ -40,8 +40,18 @@ type Frame_HEADERS struct {
 	}
 }
 
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#page-35
+type SETTINGS_Parameter struct {
+	Identifier uint8
+	Value uint32
+}
+
+type SETTINGS struct {
+	Parameters []SETTINGS_Parameter
+}
+
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.7
-type Frame_PING struct {
+type PING struct {
 	OpaqueData uint64
 	Flags struct {
 		ACK bool
@@ -49,7 +59,7 @@ type Frame_PING struct {
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.8
-type Frame_GOAWAY struct {
+type GOAWAY struct {
 	LastStreamId uint32
 	ErrorCode uint32
 	AdditionalDebugData string
@@ -69,7 +79,7 @@ func (f baseFrame) Marshal() []byte {
 	return append(header, f.Payload...)
 }
 
-func (f Frame_GOAWAY) Marshal() []byte {
+func (f GOAWAY) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x7
 
@@ -83,7 +93,7 @@ func (f Frame_GOAWAY) Marshal() []byte {
 	return bf.Marshal()
 }
 
-func (f Frame_PING) Marshal() []byte {
+func (f PING) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x6
 	if (f.Flags.ACK) {
@@ -119,7 +129,7 @@ func paddingHeaders(bf* baseFrame, padding string) []byte {
 	return paddingHeaders
 }
 
-func (f Frame_DATA) Marshal() []byte {
+func (f DATA) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x0
 
@@ -138,7 +148,7 @@ func (f Frame_DATA) Marshal() []byte {
 	return bf.Marshal()
 }
 
-func (f Frame_HEADERS) Marshal() []byte {
+func (f HEADERS) Marshal() []byte {
 	bf := baseFrame{}
 	bf.Type = 0x1
 
