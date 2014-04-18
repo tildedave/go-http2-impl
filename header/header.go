@@ -76,7 +76,21 @@ var StaticTable = map[int]HeaderField{
 	61: {"www-authenticate", ""},
 }
 
-func Encode(set HeaderSet) []byte {
+func Encode(hset HeaderSet) []byte {
+	if len(hset.Headers) == 0 {
+		return []byte{}
+	}
 
-	return []byte{0x82}
+	encodedHeader := make([]byte, 1)
+	for _, header := range hset.Headers {
+		// quite stupid implementation
+		for idx, idxHeader := range StaticTable {
+			if idxHeader.Name == header.Name && idxHeader.Value == header.Value {
+				encodedHeader[0] = byte(idx)
+				encodedHeader[0] |= 0x80
+			}
+		}
+	}
+
+	return encodedHeader
 }

@@ -7,9 +7,16 @@ import (
 	"testing"
 )
 
-func TestEncodeIndexedHeaderFieldFromStaticTable(t *testing.T) {
-	set := HeaderSet{[]HeaderField{HeaderField{":method", "GET"}}}
-	encoded := Encode(set)
+func singleHeaderField(key string, value string) HeaderSet {
+	return HeaderSet{[]HeaderField{HeaderField{key, value}}}
+}
 
-	assert.Equal(t, encoded, []byte{0x82})
+func TestEncodeNoHeadersIsNothing(t *testing.T) {
+	assert.Equal(t, Encode(HeaderSet{}), []byte{})
+}
+
+func TestEncodeIndexedHeaderFieldFromStaticTable(t *testing.T) {
+	assert.Equal(t, Encode(singleHeaderField(":method", "GET")), []byte{0x82})
+	assert.Equal(t, Encode(singleHeaderField(":method", "POST")), []byte{0x83})
+	assert.Equal(t, Encode(singleHeaderField(":path", "/")), []byte{0x84})
 }
