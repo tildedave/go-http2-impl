@@ -161,11 +161,7 @@ func (t *HeaderTable) AddHeader(header HeaderField) {
 		}
 	}
 
-	entries := make([]HeaderField, len(t.Entries) + 1)
-	copy(entries[1:], t.Entries)
-
-	entries[0] = header
-	t.Entries = entries
+	t.Entries = append([]HeaderField{ header }, t.Entries...)
 }
 
 func (t HeaderTable) ContainsHeader(h HeaderField) int {
