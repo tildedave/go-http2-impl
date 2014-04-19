@@ -20,6 +20,13 @@ type EncodingContext struct {
 		ReferenceSetEmptying bool
 		MaximumHeaderTableSizeChange int
 	}
+	Settings struct {
+		HeaderTableSize int
+	}
+}
+
+func NewEncodingContext() *EncodingContext {
+	return &EncodingContext{}
 }
 
 type HeaderSet struct {

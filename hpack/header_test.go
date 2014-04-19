@@ -8,9 +8,9 @@ import (
 )
 
 func TestEncodeHeaderFieldAddsToHeaderTable(t *testing.T) {
-	context := EncodingContext{}
+	context := NewEncodingContext()
 
-	HeaderField{":method", "GET"}.Encode(&context)
+	HeaderField{":method", "GET"}.Encode(context)
 
 	assert.Equal(t, context.HeaderTable.Entries[0],
 		HeaderField{":method", "GET"})
@@ -18,21 +18,21 @@ func TestEncodeHeaderFieldAddsToHeaderTable(t *testing.T) {
 
 func TestEncodeHeaderFieldUsesHeaderTableSizeAsOffset(t *testing.T) {
 	// http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#page-35
-	context := EncodingContext{}
+	context := NewEncodingContext()
 
-	HeaderField{ ":method", "GET" }.Encode(&context)
-	h := HeaderField{ ":scheme", "http" }.Encode(&context)
+	HeaderField{ ":method", "GET" }.Encode(context)
+	h := HeaderField{ ":scheme", "http" }.Encode(context)
 	assert.Equal(t, h, "\x87")
 }
 
 func TestEncodeHeaderFieldFromStaticTable(t *testing.T) {
-	context := EncodingContext{}
+	context := NewEncodingContext()
 
 	var encoded string
 
-	encoded = HeaderField{":method", "GET"}.Encode(&context)
+	encoded = HeaderField{":method", "GET"}.Encode(context)
 	assert.Equal(t, encoded, "\x82")
-	encoded = HeaderField{":path", "/"}.Encode(&context)
+	encoded = HeaderField{":path", "/"}.Encode(context)
 	assert.Equal(t, encoded, "\x85")
 
 	assert.Equal(t, context.HeaderTable.Entries[0], HeaderField{":path", "/"})
@@ -40,13 +40,13 @@ func TestEncodeHeaderFieldFromStaticTable(t *testing.T) {
 }
 
 func TestEncodeHeaderFieldWithNameAndLiteralValue(t *testing.T) {
-	h := HeaderField{":authority", "www.example.com"}.Encode(&EncodingContext{})
+	h := HeaderField{":authority", "www.example.com"}.Encode(NewEncodingContext())
 
 	assert.Equal(t, h, "\x41\x0f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
 }
 
 func TestEncodeAnotherHeaderFieldWithNameAndLiteralValue(t *testing.T) {
-	h := HeaderField{"user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.70 Safari/537.36"}.Encode(&EncodingContext{})
+	h := HeaderField{"user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.70 Safari/537.36"}.Encode(NewEncodingContext())
 
 	assert.Equal(t, h, "\x7A\x68Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/33.0.1750.70 Safari/537.36")
 }
@@ -55,22 +55,22 @@ func TestEncodeHeaderFieldFromAppendixD3(t *testing.T) {
 	// http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#appendix-D.3
 	var h string
 
-	context := EncodingContext{}
-	h = HeaderField{":method", "GET"}.Encode(&context)
+	context := NewEncodingContext()
+	h = HeaderField{":method", "GET"}.Encode(context)
 	assert.Equal(t, h, "\x82")
-	h = HeaderField{":scheme", "http"}.Encode(&context)
+	h = HeaderField{":scheme", "http"}.Encode(context)
 	assert.Equal(t, h, "\x87")
-	h = HeaderField{":path", "/"}.Encode(&context)
+	h = HeaderField{":path", "/"}.Encode(context)
 	assert.Equal(t, h, "\x86")
-	h = HeaderField{":authority", "www.example.com"}.Encode(&context)
+	h = HeaderField{":authority", "www.example.com"}.Encode(context)
 	assert.Equal(t, h, "\x44\x0f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
 }
 
 func TestEncodeHeaderFieldWithLiteralNameAndLiteralValue(t *testing.T) {
 	var h string
 
-	context := EncodingContext{}
-	h = HeaderField{"custom-header", "puppy-dogs"}.Encode(&context)
+	context := NewEncodingContext()
+	h = HeaderField{"custom-header", "puppy-dogs"}.Encode(context)
 	assert.Equal(t, h, "\x40\x0dcustom-header\x0apuppy-dogs")
 
 	assert.Equal(t, context.HeaderTable.Entries[0],
@@ -78,27 +78,27 @@ func TestEncodeHeaderFieldWithLiteralNameAndLiteralValue(t *testing.T) {
 }
 
 func TestEncodeHeaderSet(t *testing.T) {
-	context := EncodingContext{}
+	context := NewEncodingContext()
 
 	h := HeaderSet{ []HeaderField{
 		{":method", "GET"},
 		{":scheme", "http"},
 		{":path", "/"},
 		{":authority", "www.example.com"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	assert.Equal(t, h, "\x82\x87\x86\x44\x0f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
 }
 
 func TestEncodeHeaderSetWithReferenceSet(t *testing.T) {
-	context := EncodingContext{}
+	context := NewEncodingContext()
 
 	HeaderSet{ []HeaderField{
 		{":method", "GET"},
 		{":scheme", "http"},
 		{":path", "/"},
 		{":authority", "www.example.com"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	h := HeaderSet{ []HeaderField{
 		{":method", "GET"},
@@ -106,20 +106,20 @@ func TestEncodeHeaderSetWithReferenceSet(t *testing.T) {
 		{":path", "/"},
 		{":authority", "www.example.com"},
 		{"cache-control", "no-cache"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	assert.Equal(t, h, "\x5c\x08\x6e\x6f\x2d\x63\x61\x63\x68\x65")
 }
 
 func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
-	context := EncodingContext{}
+	context := NewEncodingContext()
 
 	HeaderSet{ []HeaderField{
 		{":method", "GET"},
 		{":scheme", "http"},
 		{":path", "/"},
 		{":authority", "www.example.com"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	HeaderSet{ []HeaderField{
 		{":method", "GET"},
@@ -127,7 +127,7 @@ func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
 		{":path", "/"},
 		{":authority", "www.example.com"},
 		{"cache-control", "no-cache"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	context.Update.ReferenceSetEmptying = true
 	h := HeaderSet{ []HeaderField{
@@ -136,14 +136,15 @@ func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
 		{":path", "/index.html"},
 		{":authority", "www.example.com"},
 		{"custom-key", "custom-value"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	assert.Equal(t, context.Update.ReferenceSetEmptying, false)
 	assert.Equal(t, h, "\x30\x85\x8c\x8b\x84\x40\x0a\x63\x75\x73\x74\x6f\x6d\x2d\x6b\x65\x79\x0c\x63\x75\x73\x74\x6f\x6d\x2d\x76\x61\x6c\x75\x65")
 }
 
 func TestEncodeHeaderSetWithEviction(t *testing.T) {
-	context := EncodingContext{}
+	context := NewEncodingContext()
+	context.Settings.HeaderTableSize = 256
 
 	t.Log(context.HeaderTable.ContainsName(":status"))
 
@@ -152,7 +153,7 @@ func TestEncodeHeaderSetWithEviction(t *testing.T) {
 		{"cache-control", "private"},
 		{"date", "Mon, 21 Oct 2013 20:13:21 GMT"},
 		{"location", "https://www.example.com"},
-	}}.Encode(&context)
+	}}.Encode(context)
 
 	assert.Equal(t, h, "\x48\x03\x33\x30\x32\x59\x07\x70\x72\x69\x76\x61\x74\x65\x63\x1d\x4d\x6f\x6e\x2c\x20\x32\x31\x20\x4f\x63\x74\x20\x32\x30\x31\x33\x20\x32\x30\x3a\x31\x33\x3a\x32\x31\x20\x47\x4d\x54\x71\x17\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
 }
