@@ -1,4 +1,4 @@
-package header
+package hpack
 
 type HeaderField struct {
 	Name  string

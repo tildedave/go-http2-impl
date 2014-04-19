@@ -1,4 +1,4 @@
-package header
+package hpack
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07
 
