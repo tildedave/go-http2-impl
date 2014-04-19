@@ -111,7 +111,7 @@ func TestEncodeHeaderSetWithReferenceSet(t *testing.T) {
 	assert.Equal(t, h, "\x5c\x08\x6e\x6f\x2d\x63\x61\x63\x68\x65")
 }
 
-func TestEncodeHeaderSetWithReferenceSetAndThreeRequests(t *testing.T) {
+func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
 	context := EncodingContext{}
 
 	HeaderSet{ []HeaderField{
@@ -129,7 +129,7 @@ func TestEncodeHeaderSetWithReferenceSetAndThreeRequests(t *testing.T) {
 		{"cache-control", "no-cache"},
 	}}.Encode(&context)
 
-	context.ReferenceSet = ReferenceSet{}
+	context.Update.ReferenceSetEmptying = true
 	h := HeaderSet{ []HeaderField{
 		{":method", "GET"},
 		{":scheme", "https"},
@@ -138,7 +138,8 @@ func TestEncodeHeaderSetWithReferenceSetAndThreeRequests(t *testing.T) {
 		{"custom-key", "custom-value"},
 	}}.Encode(&context)
 
-	assert.Equal(t, h, "\x85\x8c\x8b\x84\x40\x0a\x63\x75\x73\x74\x6f\x6d\x2d\x6b\x65\x79\x0c\x63\x75\x73\x74\x6f\x6d\x2d\x76\x61\x6c\x75\x65")
+	assert.Equal(t, context.Update.ReferenceSetEmptying, false)
+	assert.Equal(t, h, "\x30\x85\x8c\x8b\x84\x40\x0a\x63\x75\x73\x74\x6f\x6d\x2d\x6b\x65\x79\x0c\x63\x75\x73\x74\x6f\x6d\x2d\x76\x61\x6c\x75\x65")
 }
 
 /*

@@ -16,6 +16,10 @@ type ReferenceSet struct {
 type EncodingContext struct {
 	HeaderTable HeaderTable
 	ReferenceSet ReferenceSet
+	Update struct {
+		ReferenceSetEmptying bool
+		MaximumHeaderTableSizeChange int
+	}
 }
 
 type HeaderSet struct {
@@ -225,6 +229,13 @@ func (h HeaderField) Encode(context *EncodingContext) string {
 
 func (hs HeaderSet) Encode(context *EncodingContext) string {
 	encoded := ""
+
+	if context.Update.ReferenceSetEmptying {
+		context.ReferenceSet = ReferenceSet{}
+		context.Update.ReferenceSetEmptying = false
+		encoded += "\x30"
+	}
+
 	refset := &context.ReferenceSet
 
 	for _, h := range hs.Headers {
