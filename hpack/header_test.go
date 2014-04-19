@@ -75,6 +75,18 @@ func TestEncodeHeaderFieldWithLiteralNameAndLiteralValue(t *testing.T) {
 	assert.Equal(t, table.Entries[0], HeaderField{"custom-header", "puppy-dogs"})
 }
 
+func TestEncodeHeaderSet(t *testing.T) {
+	table := HeaderTable{}
+	h := HeaderSet{ []HeaderField{
+		{":method", "GET"},
+		{":scheme", "http"},
+		{":path", "/"},
+		{":authority", "www.example.com"},
+	}}.Encode(&table)
+
+	assert.Equal(t, h, "\x82\x87\x86\x44\x0f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
+}
+
 /*
 func TestDecodeHeaderWithIndexedNameAndValue(t *testing.T) {
 	table := HeaderTable{}

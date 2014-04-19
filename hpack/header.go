@@ -195,11 +195,20 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 	return string(encodedHeaders)
 }
 
+func (hs HeaderSet) Encode(table *HeaderTable) string {
+	encoded := ""
+	for _, h := range hs.Headers {
+		encoded += h.Encode(table)
+	}
+	return encoded
+}
+
 // TODO: headers of arbitrary length with integer encoding algorithm
 // TODO: header table size -- need header table representation that more closely matches
 // TODO: reference set
 // TODO: is this the right representation for emission?
 // TODO: hpack test cases https://github.com/http2jp/hpack-test-case
+
 func Decode(headers string, table *HeaderTable) ([]HeaderField, int) {
 	var decodedHeaders []HeaderField
 
