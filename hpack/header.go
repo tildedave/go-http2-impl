@@ -153,15 +153,33 @@ func addHeaderToTable(header HeaderField, table *HeaderTable) {
 	table.Entries = entries
 }
 
-func (h HeaderField) Encode(table *HeaderTable) string {
-	var encodedHeaders []byte
+func (t HeaderTable) ContainsHeader(h HeaderField) int {
+	for idx, table_h := range t.Entries {
+		if table_h == h {
+			return idx + 1
+		}
+	}
 
 	idx := StaticTableReverse[h]
+	if idx != 0 {
+		return idx + len(t.Entries)
+	}
 
-	// Indexed name and value
+	return 0
+}
+
+func (t HeaderTable) ContainsName(name string) int {
+	return t.ContainsHeader(HeaderField{name, ""})
+}
+
+func (h HeaderField) Encode(table *HeaderTable) string {
+	var encodedHeaders []byte
+	var idx int
+
+	idx = table.ContainsHeader(h)
 	if idx != 0 {
 		a := make([]byte, 1)
-		a[0] = byte(idx + len(table.Entries))
+		a[0] = byte(idx)
 		a[0] |= 0x80
 
 		addHeaderToTable(h, table)
@@ -169,12 +187,10 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 		return string(encodedHeaders)
 	}
 
-	idx = StaticTableReverse[HeaderField{h.Name, ""}]
-
-	// Indexed name, literal value
+	idx = table.ContainsName(h.Name)
 	if idx != 0 {
 		a := make([]byte, 2)
-		a[0] = byte(idx + len(table.Entries))
+		a[0] = byte(idx)
 		a[0] |= 0x40
 		a[1] = byte(len(h.Value))
 
