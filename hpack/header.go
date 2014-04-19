@@ -13,6 +13,11 @@ type ReferenceSet struct {
 	Entries []HeaderField
 }
 
+type EncodingContext struct {
+	HeaderTable HeaderTable
+	ReferenceSet ReferenceSet
+}
+
 type HeaderSet struct {
 	Headers []HeaderField
 }
@@ -178,10 +183,11 @@ func (t HeaderTable) ContainsName(name string) int {
 	return t.ContainsHeader(HeaderField{name, ""})
 }
 
-func (h HeaderField) Encode(table *HeaderTable) string {
+func (h HeaderField) Encode(context *EncodingContext) string {
 	var encodedHeaders []byte
 	var idx int
 
+	table := &context.HeaderTable
 	idx = table.ContainsHeader(h)
 	if idx != 0 {
 		a := make([]byte, 1)
@@ -217,8 +223,10 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 	return string(encodedHeaders)
 }
 
-func (hs HeaderSet) Encode(table *HeaderTable, refset *ReferenceSet) string {
+func (hs HeaderSet) Encode(context *EncodingContext) string {
 	encoded := ""
+	refset := &context.ReferenceSet
+
 	for _, h := range hs.Headers {
 		mustEncode := true
 		for _, refHeader := range refset.Entries {
@@ -228,7 +236,8 @@ func (hs HeaderSet) Encode(table *HeaderTable, refset *ReferenceSet) string {
 		}
 
 		if mustEncode {
-			encoded += h.Encode(table)
+			encoded += h.Encode(context)
+
 			refset.Entries = append(refset.Entries, h)
 		}
 	}
@@ -237,7 +246,6 @@ func (hs HeaderSet) Encode(table *HeaderTable, refset *ReferenceSet) string {
 
 // TODO: headers of arbitrary length with integer encoding algorithm
 // TODO: header table size -- need header table representation that more closely matches
-// TODO: reference set
 // TODO: is this the right representation for emission?
 // TODO: hpack test cases https://github.com/http2jp/hpack-test-case
 
