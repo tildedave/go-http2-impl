@@ -145,12 +145,12 @@ var StaticTableReverse = map[HeaderField]int{
 	HeaderField{"www-authenticate", ""}: 61,
 }
 
-func addHeaderToTable(header HeaderField, table *HeaderTable) {
-	entries := make([]HeaderField, len(table.Entries) + 1)
-	copy(entries[1:], table.Entries)
+func (t *HeaderTable) AddHeader(header HeaderField) {
+	entries := make([]HeaderField, len(t.Entries) + 1)
+	copy(entries[1:], t.Entries)
 
 	entries[0] = header
-	table.Entries = entries
+	t.Entries = entries
 }
 
 func (t HeaderTable) ContainsHeader(h HeaderField) int {
@@ -182,7 +182,7 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 		a[0] = byte(idx)
 		a[0] |= 0x80
 
-		addHeaderToTable(h, table)
+		table.AddHeader(h)
 		encodedHeaders = append(encodedHeaders, a...)
 		return string(encodedHeaders)
 	}
@@ -194,7 +194,7 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 		a[0] |= 0x40
 		a[1] = byte(len(h.Value))
 
-		addHeaderToTable(h, table)
+		table.AddHeader(h)
 		encodedHeaders = append(encodedHeaders, a...)
 		encodedHeaders = append(encodedHeaders, h.Value...)
 		return string(encodedHeaders)
@@ -206,7 +206,7 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 	encodedHeaders = append(encodedHeaders, h.Name...)
 	encodedHeaders = append(encodedHeaders, byte(len(h.Value)))
 	encodedHeaders = append(encodedHeaders, h.Value...)
-	addHeaderToTable(h, table)
+	table.AddHeader(h)
 
 	return string(encodedHeaders)
 }
