@@ -9,6 +9,10 @@ type HeaderTable struct {
 	Entries []HeaderField
 }
 
+type ReferenceSet struct {
+	Entries []*HeaderField
+}
+
 type HeaderSet struct {
 	Headers []HeaderField
 }
@@ -149,32 +153,55 @@ func addHeaderToTable(header HeaderField, table *HeaderTable) {
 	table.Entries = entries
 }
 
-func Encode(header HeaderField, table *HeaderTable) string {
-	encodedHeaders := make([]byte, 0)
+func (h HeaderField) Encode(table *HeaderTable) string {
+	var encodedHeaders []byte
 
-	idx := StaticTableReverse[header]
+	idx := StaticTableReverse[h]
+
+	// Indexed name and value
 	if idx != 0 {
-		h := make([]byte, 1)
-		h[0] = byte(idx + len(table.Entries))
-		h[0] |= 0x80
+		a := make([]byte, 1)
+		a[0] = byte(idx + len(table.Entries))
+		a[0] |= 0x80
 
-		addHeaderToTable(header, table)
-		encodedHeaders = append(encodedHeaders, h...)
+		addHeaderToTable(h, table)
+		encodedHeaders = append(encodedHeaders, a...)
 		return string(encodedHeaders)
 	}
 
-	onlyName := HeaderField{header.Name, ""}
-	idx = StaticTableReverse[onlyName]
-	if idx != 0 {
-		// http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#section-4.3.1
-		h := make([]byte, 2)
-		h[0] = byte(idx + len(table.Entries))
-		h[0] |= 0x40
-		h[1] = byte(len(header.Value))
+	idx = StaticTableReverse[HeaderField{h.Name, ""}]
 
-		encodedHeaders = append(encodedHeaders, h...)
-		encodedHeaders = append(encodedHeaders, header.Value...)
+	// Indexed name, literal value
+	if idx != 0 {
+		a := make([]byte, 2)
+		a[0] = byte(idx + len(table.Entries))
+		a[0] |= 0x40
+		a[1] = byte(len(h.Value))
+
+		addHeaderToTable(h, table)
+		encodedHeaders = append(encodedHeaders, a...)
+		encodedHeaders = append(encodedHeaders, h.Value...)
+		return string(encodedHeaders)
 	}
 
+	// Literal name, literal value
+	encodedHeaders = append(encodedHeaders, 0x40)
+	encodedHeaders = append(encodedHeaders, byte(len(h.Name)))
+	encodedHeaders = append(encodedHeaders, h.Name...)
+	encodedHeaders = append(encodedHeaders, byte(len(h.Value)))
+	encodedHeaders = append(encodedHeaders, h.Value...)
+	addHeaderToTable(h, table)
+
 	return string(encodedHeaders)
+}
+
+// TODO: headers of arbitrary length with integer encoding algorithm
+// TODO: header table size -- need header table representation that more closely matches
+// TODO: reference set
+// TODO: is this the right representation for emission?
+// TODO: hpack test cases https://github.com/http2jp/hpack-test-case
+func Decode(headers string, table *HeaderTable) ([]HeaderField, int) {
+	var decodedHeaders []HeaderField
+
+	return decodedHeaders, 0
 }
