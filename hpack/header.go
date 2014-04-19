@@ -146,6 +146,12 @@ var StaticTableReverse = map[HeaderField]int{
 }
 
 func (t *HeaderTable) AddHeader(header HeaderField) {
+	for _, table_h := range t.Entries {
+		if table_h == header {
+			return
+		}
+	}
+
 	entries := make([]HeaderField, len(t.Entries) + 1)
 	copy(entries[1:], t.Entries)
 
