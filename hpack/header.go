@@ -10,7 +10,7 @@ type HeaderTable struct {
 }
 
 type ReferenceSet struct {
-	Entries []*HeaderField
+	Entries []HeaderField
 }
 
 type HeaderSet struct {
@@ -195,10 +195,20 @@ func (h HeaderField) Encode(table *HeaderTable) string {
 	return string(encodedHeaders)
 }
 
-func (hs HeaderSet) Encode(table *HeaderTable) string {
+func (hs HeaderSet) Encode(table *HeaderTable, refset *ReferenceSet) string {
 	encoded := ""
 	for _, h := range hs.Headers {
-		encoded += h.Encode(table)
+		mustEncode := true
+		for _, refHeader := range refset.Entries {
+			if refHeader == h {
+				mustEncode = false
+			}
+		}
+
+		if mustEncode {
+			encoded += h.Encode(table)
+			refset.Entries = append(refset.Entries, h)
+		}
 	}
 	return encoded
 }

@@ -77,14 +77,38 @@ func TestEncodeHeaderFieldWithLiteralNameAndLiteralValue(t *testing.T) {
 
 func TestEncodeHeaderSet(t *testing.T) {
 	table := HeaderTable{}
+	refset := ReferenceSet{}
+
 	h := HeaderSet{ []HeaderField{
 		{":method", "GET"},
 		{":scheme", "http"},
 		{":path", "/"},
 		{":authority", "www.example.com"},
-	}}.Encode(&table)
+	}}.Encode(&table, &refset)
 
 	assert.Equal(t, h, "\x82\x87\x86\x44\x0f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
+}
+
+func TestEncodeHeaderSetWithReferenceSet(t *testing.T) {
+	table := HeaderTable{}
+	refset := ReferenceSet{}
+
+	HeaderSet{ []HeaderField{
+		{":method", "GET"},
+		{":scheme", "http"},
+		{":path", "/"},
+		{":authority", "www.example.com"},
+	}}.Encode(&table, &refset)
+
+	h := HeaderSet{ []HeaderField{
+		{":method", "GET"},
+		{":scheme", "http"},
+		{":path", "/"},
+		{":authority", "www.example.com"},
+		{"cache-control", "no-cache"},
+	}}.Encode(&table, &refset)
+
+	assert.Equal(t, h, "\x5c\x08\x6e\x6f\x2d\x63\x61\x63\x68\x65")
 }
 
 /*
