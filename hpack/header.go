@@ -180,7 +180,24 @@ func (t HeaderTable) ContainsHeader(h HeaderField) int {
 }
 
 func (t HeaderTable) ContainsName(name string) int {
-	return t.ContainsHeader(HeaderField{name, ""})
+	idx := t.ContainsHeader(HeaderField{name, ""})
+	if idx != 0 {
+		return idx
+	}
+
+	lowest := 0
+	for idx, table_h := range StaticTable {
+		if table_h.Name == name {
+			if lowest == 0 || idx < lowest {
+				lowest = idx
+			}
+		}
+	}
+	if lowest != 0 {
+		return lowest + len(t.Entries)
+	}
+
+	return 0
 }
 
 func (h HeaderField) Encode(context *EncodingContext) string {
