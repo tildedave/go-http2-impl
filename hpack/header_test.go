@@ -121,6 +121,8 @@ func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
 		{":authority", "www.example.com"},
 	}}.Encode(context)
 
+	assert.Equal(t, context.HeaderTable.Size(), 180)
+
 	HeaderSet{ []HeaderField{
 		{":method", "GET"},
 		{":scheme", "http"},
@@ -128,6 +130,8 @@ func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
 		{":authority", "www.example.com"},
 		{"cache-control", "no-cache"},
 	}}.Encode(context)
+
+	assert.Equal(t, context.HeaderTable.Size(), 233)
 
 	context.Update.ReferenceSetEmptying = true
 	h := HeaderSet{ []HeaderField{
@@ -140,15 +144,16 @@ func TestEncodeHeaderSetWithReferenceSetEmptying(t *testing.T) {
 
 	assert.Equal(t, context.Update.ReferenceSetEmptying, false)
 	assert.Equal(t, h, "\x30\x85\x8c\x8b\x84\x40\x0a\x63\x75\x73\x74\x6f\x6d\x2d\x6b\x65\x79\x0c\x63\x75\x73\x74\x6f\x6d\x2d\x76\x61\x6c\x75\x65")
+	assert.Equal(t, context.HeaderTable.Size(), 379)
 }
 
 func TestEncodeHeaderSetWithEviction(t *testing.T) {
+	var h string
+
 	context := NewEncodingContext()
-	context.Settings.HeaderTableSize = 256
+	context.HeaderTable.MaxSize = 256
 
-	t.Log(context.HeaderTable.ContainsName(":status"))
-
-	h := HeaderSet{ []HeaderField{
+	h = HeaderSet{ []HeaderField{
 		{":status", "302"},
 		{"cache-control", "private"},
 		{"date", "Mon, 21 Oct 2013 20:13:21 GMT"},
@@ -156,4 +161,29 @@ func TestEncodeHeaderSetWithEviction(t *testing.T) {
 	}}.Encode(context)
 
 	assert.Equal(t, h, "\x48\x03\x33\x30\x32\x59\x07\x70\x72\x69\x76\x61\x74\x65\x63\x1d\x4d\x6f\x6e\x2c\x20\x32\x31\x20\x4f\x63\x74\x20\x32\x30\x31\x33\x20\x32\x30\x3a\x31\x33\x3a\x32\x31\x20\x47\x4d\x54\x71\x17\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
+	assert.Equal(t, context.HeaderTable.Size(), 222)
+
+	h = HeaderSet { []HeaderField{
+		{":status", "200"},
+		{"cache-control", "private"},
+		{"date", "Mon, 21 Oct 2013 20:13:21 GMT"},
+		{"location", "https://www.example.com"},
+	}}.Encode(context)
+
+	assert.Equal(t, h, "\x8c")
+	assert.Equal(t, len(context.HeaderTable.Entries), 4, "Should have evicted header to make room")
+	assert.Equal(t, context.HeaderTable.Size(), 222)
+
+	h = HeaderSet { []HeaderField{
+		{":status", "200"},
+		{"cache-control", "private"},
+		{"date", "Mon, 21 Oct 2013 20:13:22 GMT"},
+		{"location", "https://www.example.com"},
+		{"content-encoding", "gzip"},
+		{"set-cookie", "foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1"},
+	}}.Encode(context)
+
+	assert.Equal(t, h, "\x84\x84\x43\x1d\x4d\x6f\x6e\x2c\x20\x32\x31\x20\x4f\x63\x74\x20\x32\x30\x31\x33\x20\x32\x30\x3a\x31\x33\x3a\x32\x32\x20\x47\x4d\x54\x5e\x04\x67\x7a\x69\x70\x84\x84\x83\x83\x7b\x38\x66\x6f\x6f\x3d\x41\x53\x44\x4a\x4b\x48\x51\x4b\x42\x5a\x58\x4f\x51\x57\x45\x4f\x50\x49\x55\x41\x58\x51\x57\x45\x4f\x49\x55\x3b\x20\x6d\x61\x78\x2d\x61\x67\x65\x3d\x33\x36\x30\x30\x3b\x20\x76\x65\x72\x73\x69\x6f\x6e\x3d\x31")
+
+
 }

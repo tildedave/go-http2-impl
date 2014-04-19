@@ -7,6 +7,7 @@ type HeaderField struct {
 
 type HeaderTable struct {
 	Entries []HeaderField
+	MaxSize int
 }
 
 type ReferenceSet struct {
@@ -20,13 +21,12 @@ type EncodingContext struct {
 		ReferenceSetEmptying bool
 		MaximumHeaderTableSizeChange int
 	}
-	Settings struct {
-		HeaderTableSize int
-	}
 }
 
 func NewEncodingContext() *EncodingContext {
-	return &EncodingContext{}
+	context := &EncodingContext{}
+	context.HeaderTable.MaxSize = 1024
+	return context
 }
 
 type HeaderSet struct {
@@ -104,6 +104,10 @@ func (t *HeaderTable) AddHeader(header HeaderField) {
 		}
 	}
 
+	for ; t.Size() + header.Size() > t.MaxSize ; {
+		t.Entries = t.Entries[0:len(t.Entries) - 1]
+	}
+
 	t.Entries = append([]HeaderField{ header }, t.Entries...)
 }
 
@@ -138,8 +142,19 @@ func (t HeaderTable) ContainsName(name string) int {
 	return 0
 }
 
+func (h HeaderField) Size() int {
+	return len(h.Name) + len(h.Value) + 32
+}
+
+func (t HeaderTable) Size() int {
+	size := 0
+	for _, header := range t.Entries {
+		size += header.Size()
+	}
+	return size
+}
+
 func (h HeaderField) Encode(context *EncodingContext) string {
-	var encodedHeaders []byte
 	var idx int
 
 	table := &context.HeaderTable
@@ -150,8 +165,8 @@ func (h HeaderField) Encode(context *EncodingContext) string {
 		a[0] |= 0x80
 
 		table.AddHeader(h)
-		encodedHeaders = append(encodedHeaders, a...)
-		return string(encodedHeaders)
+		encodedHeaders := string(a)
+		return encodedHeaders
 	}
 
 	idx = table.ContainsName(h.Name)
@@ -162,18 +177,18 @@ func (h HeaderField) Encode(context *EncodingContext) string {
 		a[1] = byte(len(h.Value))
 
 		table.AddHeader(h)
-		encodedHeaders = append(encodedHeaders, a...)
-		encodedHeaders = append(encodedHeaders, h.Value...)
-		return string(encodedHeaders)
+		encodedHeaders := string(a) + h.Value
+		return encodedHeaders
 	}
 
 	// Literal name, literal value
-	encodedHeaders = append(encodedHeaders, 0x40)
-	encodedHeaders = append(encodedHeaders, byte(len(h.Name)))
-	encodedHeaders = append(encodedHeaders, h.Name...)
-	encodedHeaders = append(encodedHeaders, byte(len(h.Value)))
-	encodedHeaders = append(encodedHeaders, h.Value...)
 	table.AddHeader(h)
+	encodedHeaders := ""
+	encodedHeaders += string(0x40)
+	encodedHeaders += string(byte(len(h.Name)))
+	encodedHeaders += h.Name
+	encodedHeaders += string(byte(len(h.Value)))
+	encodedHeaders += h.Value
 
 	return string(encodedHeaders)
 }
