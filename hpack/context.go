@@ -34,37 +34,26 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 	table := &context.HeaderTable
 	idx = table.ContainsHeader(h)
 	if idx != 0 {
-		a := make([]byte, 1)
-		a[0] = byte(idx)
+		a := []byte(encodeInteger(idx, 7))
 		a[0] |= 0x80
 
 		table.AddHeader(h)
-		encodedHeaders := string(a)
-		return encodedHeaders
+
+		return string(a)
 	}
 
 	idx = table.ContainsName(h.Name)
 	if idx != 0 {
-		a := make([]byte, 2)
-		a[0] = byte(idx)
+		a := []byte(encodeInteger(idx, 6))
 		a[0] |= 0x40
-		a[1] = byte(len(h.Value))
 
 		table.AddHeader(h)
-		encodedHeaders := string(a) + h.Value
-		return encodedHeaders
+		return string(a) + encodeLiteral(h.Value)
 	}
 
 	// Literal name, literal value
 	table.AddHeader(h)
-	encodedHeaders := ""
-	encodedHeaders += string(0x40)
-	encodedHeaders += string(byte(len(h.Name)))
-	encodedHeaders += h.Name
-	encodedHeaders += string(byte(len(h.Value)))
-	encodedHeaders += h.Value
-
-	return string(encodedHeaders)
+	return string(0x40) + encodeLiteral(h.Name) + encodeLiteral(h.Value)
 }
 
 func (context *EncodingContext) Encode(hs HeaderSet) string {
