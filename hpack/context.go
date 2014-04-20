@@ -99,7 +99,7 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 const (
 	IndexedMask = 0x80
 	LiteralIndexedMask = 0x40
-	LiteralNeverIndexedMask = 0x10
+	LiteralNeverIndexMask = 0x10
 	ContextUpdateMask = 0x20
 	LiteralNoIndexMask = 0x00
 )
@@ -119,6 +119,7 @@ func unpackLiteral(wireBytes *[]byte) (string) {
 
 func decodeLiteralHeader(wireBytes *[]byte, table *HeaderTable) (HeaderField) {
 	nameIndex := (*wireBytes)[0] & 0x2F
+
 	*wireBytes = (*wireBytes)[1:]
 
 	if nameIndex == byte(0) {
@@ -156,7 +157,7 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 			headers = append(headers, header)
 			context.AddHeader(header)
 
-			wireBytes = wireBytes[1: ]
+			wireBytes = wireBytes[1:]
 
 			continue
 		}
@@ -165,6 +166,12 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 			header := decodeLiteralHeader(&wireBytes, table)
 			headers = append(headers, header)
 			context.AddHeader(header)
+			continue
+		}
+
+		if wireBytes[0] & LiteralNeverIndexMask == LiteralNeverIndexMask {
+			header := decodeLiteralHeader(&wireBytes, table)
+			headers = append(headers, header)
 			continue
 		}
 

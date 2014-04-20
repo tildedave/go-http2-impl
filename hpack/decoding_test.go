@@ -80,3 +80,13 @@ func TestDecodeWithLiteralFieldWithoutIndexing(t *testing.T) {
 	assert.Equal(t, headers.Headers[0], HeaderField{ ":path", "/sample/path"})
 	assert.Equal(t, len(context.HeaderTable.Entries), 0)
 }
+
+func TestDecodeWithLiteralFieldWithNeverIndexing(t *testing.T) {
+	context := NewEncodingContext()
+
+	headers, _ := context.Decode("\x14\x0c\x2f\x73\x61\x6d\x70\x6c\x65\x2f\x70\x61\x74\x68")
+
+	assert.Equal(t, len(headers.Headers), 1)
+	assert.Equal(t, headers.Headers[0], HeaderField{ ":path", "/sample/path"})
+	assert.Equal(t, len(context.HeaderTable.Entries), 0)
+}
