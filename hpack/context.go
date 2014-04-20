@@ -99,7 +99,7 @@ const (
 	IndexedMask = 0x80
 	LiteralIndexedMask = 0x40
 	LiteralNeverIndexedMask = 0x10
-	EncodingContextUpdateMask = 0x20
+	ContextUpdateMask = 0x20
 	LiteralNoIndexMask = 0x00
 )
 
@@ -124,6 +124,15 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 	refset := &context.ReferenceSet
 
 	for ; len(wireBytes) > 0 ; {
+		if wireBytes[0] & ContextUpdateMask == ContextUpdateMask {
+			if wireBytes[0] & 0x30 == 0x30 {
+				// empty reference set
+				refset.Entries = []*HeaderField{}
+			}
+			wireBytes = wireBytes[1: ]
+			continue
+		}
+
 		if wireBytes[0] & IndexedMask == IndexedMask {
 			index := wireBytes[0] & 0x4F
 			header := table.HeaderAt(int(index))
@@ -156,6 +165,7 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 				headers = append(headers, header)
 				context.AddHeader(header)
 			}
+			continue
 		}
 	}
 
