@@ -1,7 +1,7 @@
 package server
 
 import (
-	"http2-impl/common"
+	"go-http2-impl/common"
 )
 
 func Respond(data []byte) (common.Frame, bool) {
