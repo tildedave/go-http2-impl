@@ -1,5 +1,9 @@
 package hpack
 
+import (
+	"fmt"
+)
+
 type EncodingContext struct {
 	HeaderTable HeaderTable
 	ReferenceSet ReferenceSet
@@ -83,20 +87,68 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 }
 
 const (
-	IndexedHeaderMask = 0x80
-	LiteralHeaderIncrementalIndexMask = 0x40
-	LiteralHeaderNeverIndexMask = 0x10
+	IndexedMask = 0x80
+	LiteralIndexedMask = 0x40
+	LiteralNeverIndexedMask = 0x10
 	EncodingContextUpdateMask = 0x20
-	LiteralHeaderNoIndexingMask = 0x00
+	LiteralNoIndexMask = 0x00
 )
+
+func fmtIsNotUnused() {
+	fmt.Println("line to not complain about unused fmt import")
+}
+
+func unpackLiteral(wireBytes []byte, i int) (string, int) {
+	len := int(wireBytes[i] & 0x4F)
+	str := string(wireBytes[i + 1:i + 1 + len])
+
+	return str, i + 1 + len
+}
 
 func (context *EncodingContext) Decode(wire string) HeaderSet {
 	headers := []HeaderField{}
+	table := context.HeaderTable
 	wireBytes := []byte(wire)
 
-	if wireBytes[0] & IndexedHeaderMask == IndexedHeaderMask {
-		index := wireBytes[0] & 0x4F
-		headers = append(headers, context.HeaderTable.HeaderAt(int(index)))
+	for i := 0; i < len(wireBytes); i++ {
+		if wireBytes[i] & IndexedMask == IndexedMask {
+			index := wireBytes[i] & 0x4F
+			header := table.HeaderAt(int(index))
+			headers = append(headers, header)
+			table.AddHeader(header)
+
+			continue
+		}
+
+		if wireBytes[i] & LiteralIndexedMask == LiteralIndexedMask {
+
+
+			nameIndex := wireBytes[i] & 0x2F
+
+			if nameIndex == byte(0) {
+				var name, value string
+
+				name, i = unpackLiteral(wireBytes, i + 1)
+				value, i = unpackLiteral(wireBytes, i)
+
+				header := HeaderField{ name, value }
+				headers = append(headers, header)
+				table.AddHeader(header)
+
+				i += 1000
+			} else {
+				var value string
+
+				nameHeader := table.HeaderAt(int(nameIndex))
+
+				value, i = unpackLiteral(wireBytes, i + 1)
+
+				header := HeaderField{ nameHeader.Name, value }
+
+				headers = append(headers, header)
+				table.AddHeader(header)
+			}
+		}
 	}
 
 	return HeaderSet{ headers }
