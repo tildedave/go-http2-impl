@@ -69,7 +69,7 @@ type GOAWAY struct {
 }
 
 type Frame interface {
-	Marshal() string
+	Marshal() []byte
 }
 
 func (f base) Marshal() []byte {
