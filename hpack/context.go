@@ -118,8 +118,10 @@ func unpackLiteral(wireBytes *[]byte) (string) {
 
 func (context *EncodingContext) Decode(wire string) HeaderSet {
 	headers := []HeaderField{}
-	table := &context.HeaderTable
 	wireBytes := []byte(wire)
+
+	table := &context.HeaderTable
+	refset := &context.ReferenceSet
 
 	for ; len(wireBytes) > 0 ; {
 		if wireBytes[0] & IndexedMask == IndexedMask {
@@ -154,6 +156,20 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 				headers = append(headers, header)
 				context.AddHeader(header)
 			}
+		}
+	}
+
+	for _, h := range refset.Entries {
+		found := false
+
+		for _, emitted := range headers {
+			if emitted == *h {
+				found = true
+			}
+		}
+
+		if !found {
+			headers = append(headers, *h)
 		}
 	}
 
