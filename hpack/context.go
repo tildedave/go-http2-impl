@@ -54,7 +54,7 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 	return string(encodedHeaders)
 }
 
-func (context *EncodingContext) EncodeSet(hs HeaderSet) string {
+func (context *EncodingContext) Encode(hs HeaderSet) string {
 	encoded := ""
 
 	if context.Update.ReferenceSetEmptying {
@@ -80,4 +80,24 @@ func (context *EncodingContext) EncodeSet(hs HeaderSet) string {
 		}
 	}
 	return encoded
+}
+
+const (
+	IndexedHeaderMask = 0x80
+	LiteralHeaderIncrementalIndexMask = 0x40
+	LiteralHeaderNeverIndexMask = 0x10
+	EncodingContextUpdateMask = 0x20
+	LiteralHeaderNoIndexingMask = 0x00
+)
+
+func (context *EncodingContext) Decode(wire string) HeaderSet {
+	headers := []HeaderField{}
+	wireBytes := []byte(wire)
+
+	if wireBytes[0] & IndexedHeaderMask == IndexedHeaderMask {
+		index := wireBytes[0] & 0x4F
+		headers = append(headers, context.HeaderTable.HeaderAt(int(index)))
+	}
+
+	return HeaderSet{ headers }
 }

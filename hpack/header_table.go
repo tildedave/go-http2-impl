@@ -50,6 +50,13 @@ func (t HeaderTable) ContainsName(name string) int {
 	return 0
 }
 
+func (t HeaderTable) HeaderAt(idx int) HeaderField {
+	if idx - 1 > len(t.Entries) {
+		return StaticTable[idx - 1 - len(t.Entries)]
+	}
+	return t.Entries[idx - 1]
+}
+
 func (t HeaderTable) Size() int {
 	size := 0
 	for _, header := range t.Entries {
