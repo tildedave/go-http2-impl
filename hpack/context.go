@@ -1,6 +1,7 @@
 package hpack
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -116,7 +117,23 @@ func unpackLiteral(wireBytes *[]byte) (string) {
 	return str
 }
 
-func (context *EncodingContext) Decode(wire string) HeaderSet {
+func decodeLiteralHeader(wireBytes *[]byte, table *HeaderTable) (HeaderField) {
+	nameIndex := (*wireBytes)[0] & 0x2F
+	*wireBytes = (*wireBytes)[1:]
+
+	if nameIndex == byte(0) {
+		name := unpackLiteral(wireBytes)
+		value := unpackLiteral(wireBytes)
+
+		return HeaderField{ name, value }
+	}
+
+	nameHeader := table.HeaderAt(int(nameIndex))
+	value := unpackLiteral(wireBytes)
+	return HeaderField{ nameHeader.Name, value }
+}
+
+func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 	headers := []HeaderField{}
 	wireBytes := []byte(wire)
 
@@ -145,28 +162,19 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 		}
 
 		if wireBytes[0] & LiteralIndexedMask == LiteralIndexedMask {
-			nameIndex := wireBytes[0] & 0x2F
-			wireBytes = wireBytes[1:]
-
-			if nameIndex == byte(0) {
-				name := unpackLiteral(&wireBytes)
-				value := unpackLiteral(&wireBytes)
-
-				header := HeaderField{ name, value }
-				headers = append(headers, header)
-				context.AddHeader(header)
-			} else {
-				nameHeader := table.HeaderAt(int(nameIndex))
-
-				value := unpackLiteral(&wireBytes)
-
-				header := HeaderField{ nameHeader.Name, value }
-
-				headers = append(headers, header)
-				context.AddHeader(header)
-			}
+			header := decodeLiteralHeader(&wireBytes, table)
+			headers = append(headers, header)
+			context.AddHeader(header)
 			continue
 		}
+
+		if wireBytes[0] & LiteralNoIndexMask == LiteralNoIndexMask {
+			header := decodeLiteralHeader(&wireBytes, table)
+			headers = append(headers, header)
+			continue
+		}
+
+		return HeaderSet{}, errors.New("Could not decode")
 	}
 
 	for _, h := range refset.Entries {
@@ -183,5 +191,5 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 		}
 	}
 
-	return HeaderSet{ headers }
+	return HeaderSet{ headers }, nil
 }
