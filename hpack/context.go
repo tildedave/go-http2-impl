@@ -79,10 +79,8 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 	for _, h := range hs.Headers {
 		mustEncode := true
-		fmt.Println(h)
 
 		for _, refHeader := range refset.Entries {
-			fmt.Println(*refHeader, h, *refHeader == h)
 			if *refHeader == h {
 				mustEncode = false
 			}
@@ -90,7 +88,8 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 		if mustEncode {
 			encoded += context.EncodeField(h)
-			refset.Entries = append(refset.Entries, &h)
+			// Not the correct way to do this
+			refset.Entries = append(refset.Entries, &HeaderField{h.Name, h.Value})
 		}
 	}
 	return encoded
@@ -156,12 +155,6 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 				context.AddHeader(header)
 			}
 		}
-	}
-
-	fmt.Println(context.ReferenceSet)
-
-	for _, header := range context.ReferenceSet.Entries {
-		headers = append(headers, *header)
 	}
 
 	return HeaderSet{ headers }
