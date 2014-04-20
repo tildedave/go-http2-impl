@@ -16,7 +16,15 @@ type EncodingContext struct {
 func NewEncodingContext() *EncodingContext {
 	context := &EncodingContext{}
 	context.HeaderTable.MaxSize = 1024
+
 	return context
+}
+
+func (context *EncodingContext) AddHeader(h HeaderField) {
+	ref := context.HeaderTable.AddHeader(h)
+	refset := &context.ReferenceSet
+
+	refset.Entries = append(refset.Entries, ref)
 }
 
 func (context *EncodingContext) EncodeField(h HeaderField) string {
@@ -71,16 +79,18 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 	for _, h := range hs.Headers {
 		mustEncode := true
+		fmt.Println(h)
+
 		for _, refHeader := range refset.Entries {
-			if refHeader == h {
+			fmt.Println(*refHeader, h, *refHeader == h)
+			if *refHeader == h {
 				mustEncode = false
 			}
 		}
 
 		if mustEncode {
 			encoded += context.EncodeField(h)
-
-			refset.Entries = append(refset.Entries, h)
+			refset.Entries = append(refset.Entries, &h)
 		}
 	}
 	return encoded
@@ -109,7 +119,7 @@ func unpackLiteral(wireBytes *[]byte) (string) {
 
 func (context *EncodingContext) Decode(wire string) HeaderSet {
 	headers := []HeaderField{}
-	table := context.HeaderTable
+	table := &context.HeaderTable
 	wireBytes := []byte(wire)
 
 	for ; len(wireBytes) > 0 ; {
@@ -117,7 +127,7 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 			index := wireBytes[0] & 0x4F
 			header := table.HeaderAt(int(index))
 			headers = append(headers, header)
-			table.AddHeader(header)
+			context.AddHeader(header)
 
 			wireBytes = wireBytes[1: ]
 
@@ -134,7 +144,7 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 
 				header := HeaderField{ name, value }
 				headers = append(headers, header)
-				table.AddHeader(header)
+				context.AddHeader(header)
 			} else {
 				nameHeader := table.HeaderAt(int(nameIndex))
 
@@ -143,9 +153,15 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 				header := HeaderField{ nameHeader.Name, value }
 
 				headers = append(headers, header)
-				table.AddHeader(header)
+				context.AddHeader(header)
 			}
 		}
+	}
+
+	fmt.Println(context.ReferenceSet)
+
+	for _, header := range context.ReferenceSet.Entries {
+		headers = append(headers, *header)
 	}
 
 	return HeaderSet{ headers }

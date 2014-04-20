@@ -43,3 +43,16 @@ func TestDecodeLiteralHeaderWithLiteralName(t *testing.T) {
 	assert.Equal(t, len(headers.Headers), 1)
 	assert.Equal(t, headers.Headers[0], HeaderField{"custom-header", "puppy-dogs"})
 }
+
+func TestDecodeWithReferenceSet(t *testing.T) {
+	context := NewEncodingContext()
+
+	// :method: GET
+	context.Decode("\x82")
+	// :scheme: http
+	headers := context.Decode("\x87")
+
+	assert.Equal(t, len(headers.Headers), 2)
+	assert.Equal(t, headers.Headers[0], HeaderField{ ":scheme", "http" })
+	assert.Equal(t, headers.Headers[1], HeaderField{ ":method", "GET" })
+}

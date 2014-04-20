@@ -5,18 +5,21 @@ type HeaderTable struct {
 	MaxSize int
 }
 
-func (t *HeaderTable) AddHeader(header HeaderField) {
+func (t *HeaderTable) AddHeader(header HeaderField) *HeaderField {
 	for _, table_h := range t.Entries {
 		if table_h == header {
-			return
+			return nil
 		}
 	}
 
 	for ; t.Size() + header.Size() > t.MaxSize ; {
+		// eviction
 		t.Entries = t.Entries[0:len(t.Entries) - 1]
 	}
 
 	t.Entries = append([]HeaderField{ header }, t.Entries...)
+
+	return &t.Entries[len(t.Entries) - 1]
 }
 
 func (t HeaderTable) ContainsHeader(h HeaderField) int {
