@@ -1,7 +1,7 @@
 package main
 
 import (
-	"go-http2-impl/frame"
+	"github.com/tildedave/go-http2-impl/frame"
 )
 
 func Respond(data []byte) (frame.Frame, bool) {
