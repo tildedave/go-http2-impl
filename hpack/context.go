@@ -98,11 +98,13 @@ func fmtIsNotUnused() {
 	fmt.Println("line to not complain about unused fmt import")
 }
 
-func unpackLiteral(wireBytes []byte, i int) (string, int) {
-	len := int(wireBytes[i] & 0x4F)
-	str := string(wireBytes[i + 1:i + 1 + len])
+func unpackLiteral(wireBytes *[]byte) (string) {
+	length := int((*wireBytes)[0] & 0x4F)
+	str := string((*wireBytes)[1:1 + length])
 
-	return str, i + 1 + len
+	*wireBytes = (*wireBytes)[1 + length:]
+
+	return str
 }
 
 func (context *EncodingContext) Decode(wire string) HeaderSet {
@@ -110,38 +112,33 @@ func (context *EncodingContext) Decode(wire string) HeaderSet {
 	table := context.HeaderTable
 	wireBytes := []byte(wire)
 
-	for i := 0; i < len(wireBytes); i++ {
-		if wireBytes[i] & IndexedMask == IndexedMask {
-			index := wireBytes[i] & 0x4F
+	for ; len(wireBytes) > 0 ; {
+		if wireBytes[0] & IndexedMask == IndexedMask {
+			index := wireBytes[0] & 0x4F
 			header := table.HeaderAt(int(index))
 			headers = append(headers, header)
 			table.AddHeader(header)
 
+			wireBytes = wireBytes[1: ]
+
 			continue
 		}
 
-		if wireBytes[i] & LiteralIndexedMask == LiteralIndexedMask {
-
-
-			nameIndex := wireBytes[i] & 0x2F
+		if wireBytes[0] & LiteralIndexedMask == LiteralIndexedMask {
+			nameIndex := wireBytes[0] & 0x2F
+			wireBytes = wireBytes[1:]
 
 			if nameIndex == byte(0) {
-				var name, value string
-
-				name, i = unpackLiteral(wireBytes, i + 1)
-				value, i = unpackLiteral(wireBytes, i)
+				name := unpackLiteral(&wireBytes)
+				value := unpackLiteral(&wireBytes)
 
 				header := HeaderField{ name, value }
 				headers = append(headers, header)
 				table.AddHeader(header)
-
-				i += 1000
 			} else {
-				var value string
-
 				nameHeader := table.HeaderAt(int(nameIndex))
 
-				value, i = unpackLiteral(wireBytes, i + 1)
+				value := unpackLiteral(&wireBytes)
 
 				header := HeaderField{ nameHeader.Name, value }
 
