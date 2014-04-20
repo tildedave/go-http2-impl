@@ -19,21 +19,28 @@ func encodeInteger(i int, prefixSize uint) string {
 	return string(repr)
 }
 
-func decodeInteger(encodedInteger string, prefixSize uint) uint {
-	var mask, m, i uint
+func decodeInteger(wire *[]byte, prefixSize uint) uint {
+	var m, i uint
+	var mask byte
 
 	mask = (1 << prefixSize) - 1
-	i = uint(byte(encodedInteger[0]) & byte(mask))
-	if i < mask {
+
+	w := (*wire)[0]
+	*wire = (*wire)[1:]
+
+	i = uint(w & mask)
+	if i < uint(mask) {
 		return i
 	}
 
 	for ;; {
-		encodedInteger = encodedInteger[1:]
-		i += uint(byte(encodedInteger[0]) & 127) * (1 << m)
+		w = (*wire)[0]
+		*wire = (*wire)[1:]
+
+		i += uint(w & 127) * (1 << m)
 		m += 7
 
-		if encodedInteger[0] & 128 != 128 {
+		if w & 128 != 128 {
 			return i
 		}
 	}

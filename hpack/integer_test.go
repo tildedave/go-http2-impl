@@ -30,21 +30,25 @@ func TestEncodeIntegerThatOverflowsPrefixTwice(t *testing.T) {
 }
 
 func TestDecodeIntegerThatFitsInPrefix(t *testing.T) {
-	decodedInteger := decodeInteger(string(byte(0x0a)), 5)
+	wire := []byte{0x0a}
+	decodedInteger := decodeInteger(&wire, 5)
 
 	assert.Equal(t, decodedInteger, uint(10))
+	assert.Equal(t, wire, []byte{})
 }
 
 func TestDecodeIntegerThatOverflowsPrefix(t *testing.T) {
-	encoding := []byte{0x1f, 0x03}
-	decodedInteger := decodeInteger(string(encoding), 5)
+	wire := []byte{0x1f, 0x03}
+	decodedInteger := decodeInteger(&wire, 5)
 
 	assert.Equal(t, decodedInteger, uint(34))
+	assert.Equal(t, wire, []byte{})
 }
 
 func TestDecodeIntegerThatOverflowsPrefixTwice(t *testing.T) {
-	encoding := []byte{0x1f, 0x9a, 0x0a}
-	decodedInteger := decodeInteger(string(encoding), 5)
+	wire := []byte{0x1f, 0x9a, 0x0a}
+	decodedInteger := decodeInteger(&wire, 5)
 
 	assert.Equal(t, decodedInteger, uint(1337))
+	assert.Equal(t, wire, []byte{})
 }
