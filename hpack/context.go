@@ -23,9 +23,10 @@ func NewEncodingContext() *EncodingContext {
 
 func (context *EncodingContext) AddHeader(h HeaderField) {
 	ref := context.HeaderTable.AddHeader(h)
-	refset := &context.ReferenceSet
-
-	refset.Entries = append(refset.Entries, ref)
+	if ref != nil {
+		refset := &context.ReferenceSet
+		refset.Entries = append(refset.Entries, ref)
+	}
 }
 
 func (context *EncodingContext) EncodeField(h HeaderField) string {
@@ -37,7 +38,7 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 		a := []byte(encodeInteger(idx, 7))
 		a[0] |= 0x80
 
-		table.AddHeader(h)
+		context.AddHeader(h)
 
 		return string(a)
 	}
@@ -47,12 +48,12 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 		a := []byte(encodeInteger(idx, 6))
 		a[0] |= 0x40
 
-		table.AddHeader(h)
+		context.AddHeader(h)
 		return string(a) + encodeLiteral(h.Value)
 	}
 
 	// Literal name, literal value
-	table.AddHeader(h)
+	context.AddHeader(h)
 	return string(0x40) + encodeLiteral(h.Name) + encodeLiteral(h.Value)
 }
 
@@ -78,8 +79,6 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 		if mustEncode {
 			encoded += context.EncodeField(h)
-			// Not the correct way to do this
-			refset.Entries = append(refset.Entries, &HeaderField{h.Name, h.Value})
 		}
 	}
 	return encoded
@@ -163,6 +162,7 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 		found := false
 
 		for _, emitted := range headers {
+
 			if emitted == *h {
 				found = true
 			}
