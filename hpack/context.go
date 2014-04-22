@@ -68,6 +68,20 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 	refset := &context.ReferenceSet
 
+	// Diff HeaderSet and ReferenceSet
+	for _, h := range hs.Headers {
+		present := false
+		for _, refHeader := range refset.Entries {
+			if *refHeader == h {
+				present = true
+			}
+		}
+
+		if !present {
+
+		}
+	}
+
 	for _, h := range hs.Headers {
 		mustEncode := true
 
