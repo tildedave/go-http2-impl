@@ -23,9 +23,10 @@ func NewEncodingContext() *EncodingContext {
 
 func (context *EncodingContext) AddHeader(h HeaderField) {
 	ref := context.HeaderTable.AddHeader(h)
-	refset := &context.ReferenceSet
-
-	refset.Entries = append(refset.Entries, ref)
+	if ref != nil {
+		refset := &context.ReferenceSet
+		refset.Entries = append(refset.Entries, ref)
+	}
 }
 
 func (context *EncodingContext) EncodeField(h HeaderField) string {
@@ -34,37 +35,26 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 	table := &context.HeaderTable
 	idx = table.ContainsHeader(h)
 	if idx != 0 {
-		a := make([]byte, 1)
-		a[0] = byte(idx)
+		a := []byte(encodeInteger(idx, 7))
 		a[0] |= 0x80
 
-		table.AddHeader(h)
-		encodedHeaders := string(a)
-		return encodedHeaders
+		context.AddHeader(h)
+
+		return string(a)
 	}
 
 	idx = table.ContainsName(h.Name)
 	if idx != 0 {
-		a := make([]byte, 2)
-		a[0] = byte(idx)
+		a := []byte(encodeInteger(idx, 6))
 		a[0] |= 0x40
-		a[1] = byte(len(h.Value))
 
-		table.AddHeader(h)
-		encodedHeaders := string(a) + h.Value
-		return encodedHeaders
+		context.AddHeader(h)
+		return string(a) + encodeLiteral(h.Value)
 	}
 
 	// Literal name, literal value
-	table.AddHeader(h)
-	encodedHeaders := ""
-	encodedHeaders += string(0x40)
-	encodedHeaders += string(byte(len(h.Name)))
-	encodedHeaders += h.Name
-	encodedHeaders += string(byte(len(h.Value)))
-	encodedHeaders += h.Value
-
-	return string(encodedHeaders)
+	context.AddHeader(h)
+	return string(0x40) + encodeLiteral(h.Name) + encodeLiteral(h.Value)
 }
 
 func (context *EncodingContext) Encode(hs HeaderSet) string {
@@ -89,8 +79,6 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 		if mustEncode {
 			encoded += context.EncodeField(h)
-			// Not the correct way to do this
-			refset.Entries = append(refset.Entries, &HeaderField{h.Name, h.Value})
 		}
 	}
 	return encoded
@@ -108,29 +96,17 @@ func fmtIsNotUnused() {
 	fmt.Println("line to not complain about unused fmt import")
 }
 
-func unpackLiteral(wireBytes *[]byte) (string) {
-	length := int((*wireBytes)[0] & 0x4F)
-	str := string((*wireBytes)[1:1 + length])
-
-	*wireBytes = (*wireBytes)[1 + length:]
-
-	return str
-}
-
-func decodeLiteralHeader(wireBytes *[]byte, table *HeaderTable) (HeaderField) {
-	nameIndex := (*wireBytes)[0] & 0x2F
-
-	*wireBytes = (*wireBytes)[1:]
-
-	if nameIndex == byte(0) {
-		name := unpackLiteral(wireBytes)
-		value := unpackLiteral(wireBytes)
+func decodeLiteralHeader(wireBytes *[]byte, indexBits uint, table *HeaderTable) (HeaderField) {
+	nameIndex := decodeInteger(wireBytes, indexBits)
+	if nameIndex == uint(0) {
+		name := decodeLiteral(wireBytes)
+		value := decodeLiteral(wireBytes)
 
 		return HeaderField{ name, value }
 	}
 
 	nameHeader := table.HeaderAt(int(nameIndex))
-	value := unpackLiteral(wireBytes)
+	value := decodeLiteral(wireBytes)
 	return HeaderField{ nameHeader.Name, value }
 }
 
@@ -152,31 +128,29 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 		}
 
 		if wireBytes[0] & IndexedMask == IndexedMask {
-			index := wireBytes[0] & 0x4F
+			index := decodeInteger(&wireBytes, 7)
 			header := table.HeaderAt(int(index))
 			headers = append(headers, header)
 			context.AddHeader(header)
-
-			wireBytes = wireBytes[1:]
 
 			continue
 		}
 
 		if wireBytes[0] & LiteralIndexedMask == LiteralIndexedMask {
-			header := decodeLiteralHeader(&wireBytes, table)
+			header := decodeLiteralHeader(&wireBytes, 6, table)
 			headers = append(headers, header)
 			context.AddHeader(header)
 			continue
 		}
 
 		if wireBytes[0] & LiteralNeverIndexMask == LiteralNeverIndexMask {
-			header := decodeLiteralHeader(&wireBytes, table)
+			header := decodeLiteralHeader(&wireBytes, 4, table)
 			headers = append(headers, header)
 			continue
 		}
 
 		if wireBytes[0] & LiteralNoIndexMask == LiteralNoIndexMask {
-			header := decodeLiteralHeader(&wireBytes, table)
+			header := decodeLiteralHeader(&wireBytes, 4, table)
 			headers = append(headers, header)
 			continue
 		}
@@ -188,6 +162,7 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 		found := false
 
 		for _, emitted := range headers {
+
 			if emitted == *h {
 				found = true
 			}
