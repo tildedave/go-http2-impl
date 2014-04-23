@@ -174,7 +174,10 @@ func TestEncodeHeaderSetWithEviction(t *testing.T) {
 		{"location", "https://www.example.com"},
 	}})
 
-	assert.Equal(t, h, "\x8c")
+	// TODO: example from RFC implies that encoder will detect
+	// that the header will be evicted and so it doesn't need to
+	// tell the decoder (????)
+	assert.Equal(t, h, "\x84\x8c")
 	assert.Equal(t, len(context.HeaderTable.Entries), 4, "Should have evicted header to make room")
 	assert.Equal(t, context.HeaderTable.Size(), 222)
 
@@ -216,5 +219,7 @@ func TestEncodeRemovesHeadersThatAreNotIncludedInTheSecond(t *testing.T) {
 		{":scheme", "https"},
 	}})
 
-	assert.Equal(t, h, "\x82\x88")
+	assert.Equal(t, h, "\x81\x89")
+	assert.Equal(t, len(context.HeaderTable.Entries), 3)
+	assert.Equal(t, len(context.ReferenceSet.Entries), 2)
 }

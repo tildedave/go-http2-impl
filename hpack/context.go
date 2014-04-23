@@ -1,6 +1,7 @@
 package hpack
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
 )
@@ -57,30 +58,57 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 	return string(0x40) + encodeLiteral(h.Name) + encodeLiteral(h.Value)
 }
 
+func (context *EncodingContext) encodeMissingHeaders(hs HeaderSet) string {
+	// Headers absent from reference set are encoded as their
+	// indexed encoding
+
+	encoded := ""
+	refset := context.ReferenceSet
+
+	absent := list.New()
+	for _, refHeader := range refset.Entries {
+		present := false
+		for _, h := range hs.Headers {
+			if *refHeader == h {
+				present = true
+				break
+			}
+		}
+		if !present {
+			absent.PushBack(refHeader)
+		}
+	}
+
+	for e := absent.Front(); e != nil; e = e.Next() {
+		// find which index this was at in the header
+		// table, don't need to pop it from there tho
+
+		refHeader := e.Value.(*HeaderField)
+		idx := context.HeaderTable.ContainsHeader(*refHeader)
+		a := []byte(encodeInteger(idx, 7))
+		a[0] |= 0x80
+
+		encoded += string(a)
+
+		context.ReferenceSet.Remove(refHeader)
+	}
+
+	return encoded
+}
+
 func (context *EncodingContext) Encode(hs HeaderSet) string {
 	encoded := ""
 
+	// TODO: ideally encodeMissingHeaders detects this
 	if context.Update.ReferenceSetEmptying {
 		context.ReferenceSet = ReferenceSet{}
 		context.Update.ReferenceSetEmptying = false
 		encoded += "\x30"
 	}
 
+	encoded += context.encodeMissingHeaders(hs)
+
 	refset := &context.ReferenceSet
-
-	// Diff HeaderSet and ReferenceSet
-	for _, h := range hs.Headers {
-		present := false
-		for _, refHeader := range refset.Entries {
-			if *refHeader == h {
-				present = true
-			}
-		}
-
-		if !present {
-
-		}
-	}
 
 	for _, h := range hs.Headers {
 		mustEncode := true
