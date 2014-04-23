@@ -148,6 +148,7 @@ func decodeLiteralHeader(wireBytes *[]byte, indexBits uint, table *HeaderTable) 
 
 	nameHeader := table.HeaderAt(int(nameIndex))
 	value := decodeLiteral(wireBytes)
+
 	return HeaderField{ nameHeader.Name, value }
 }
 
@@ -159,14 +160,13 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 	refset := context.ReferenceSet
 
 	for ; len(wireBytes) > 0 ; {
-		if wireBytes[0] & ContextUpdateMask == ContextUpdateMask {
-			if wireBytes[0] & 0x30 == 0x30 {
-				// empty reference set
-				refset.Clear()
-			}
+		if wireBytes[0] == 0x30 {
+			refset.Clear()
 			wireBytes = wireBytes[1: ]
 			continue
 		}
+
+		// TODO: Maximum header table size change
 
 		if wireBytes[0] & IndexedMask == IndexedMask {
 			index := decodeInteger(&wireBytes, 7)
