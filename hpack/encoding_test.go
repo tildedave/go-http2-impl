@@ -208,13 +208,17 @@ func TestEncodeAndDecodeWithVeryLargeHeaderAndTheSameContext(t *testing.T) {
 }
 
 func TestEncodeRemovesHeadersThatAreNotIncludedInTheSecond(t *testing.T) {
+	var h string
+
 	context := NewEncodingContext()
-	context.Encode(HeaderSet{[]HeaderField{
+	h = context.Encode(HeaderSet{[]HeaderField{
 		{":method", "GET"},
 		{":scheme", "http"},
 	}})
 
-	h := context.Encode(HeaderSet{[]HeaderField{
+	assert.Equal(t, h, "\x82\x87")
+
+	h = context.Encode(HeaderSet{[]HeaderField{
 		{":method", "GET"},
 		{":scheme", "https"},
 	}})

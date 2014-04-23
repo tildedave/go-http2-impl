@@ -8,7 +8,7 @@ import (
 
 type EncodingContext struct {
 	HeaderTable HeaderTable
-	ReferenceSet ReferenceSet
+	ReferenceSet *ReferenceSet
 	Update struct {
 		ReferenceSetEmptying bool
 		MaximumHeaderTableSizeChange int
@@ -18,6 +18,7 @@ type EncodingContext struct {
 func NewEncodingContext() *EncodingContext {
 	context := &EncodingContext{}
 	context.HeaderTable.MaxSize = 1024
+	context.ReferenceSet = NewReferenceSet()
 
 	return context
 }
@@ -25,8 +26,7 @@ func NewEncodingContext() *EncodingContext {
 func (context *EncodingContext) AddHeader(h HeaderField) {
 	ref := context.HeaderTable.AddHeader(h)
 	if ref != nil {
-		refset := &context.ReferenceSet
-		refset.Entries = append(refset.Entries, ref)
+		context.ReferenceSet.Add(ref)
 	}
 }
 
@@ -66,7 +66,7 @@ func (context *EncodingContext) encodeMissingHeaders(hs HeaderSet) string {
 	refset := context.ReferenceSet
 
 	absent := list.New()
-	for _, refHeader := range refset.Entries {
+	for refHeader, _ := range refset.Entries {
 		present := false
 		for _, h := range hs.Headers {
 			if *refHeader == h {
@@ -101,19 +101,18 @@ func (context *EncodingContext) Encode(hs HeaderSet) string {
 
 	// TODO: ideally encodeMissingHeaders detects this
 	if context.Update.ReferenceSetEmptying {
-		context.ReferenceSet = ReferenceSet{}
+		context.ReferenceSet = NewReferenceSet()
 		context.Update.ReferenceSetEmptying = false
 		encoded += "\x30"
 	}
 
 	encoded += context.encodeMissingHeaders(hs)
 
-	refset := &context.ReferenceSet
-
+	refset := context.ReferenceSet
 	for _, h := range hs.Headers {
 		mustEncode := true
 
-		for _, refHeader := range refset.Entries {
+		for refHeader, _ := range refset.Entries {
 			if *refHeader == h {
 				mustEncode = false
 			}
@@ -157,13 +156,13 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 	wireBytes := []byte(wire)
 
 	table := &context.HeaderTable
-	refset := &context.ReferenceSet
+	refset := context.ReferenceSet
 
 	for ; len(wireBytes) > 0 ; {
 		if wireBytes[0] & ContextUpdateMask == ContextUpdateMask {
 			if wireBytes[0] & 0x30 == 0x30 {
 				// empty reference set
-				refset.Entries = []*HeaderField{}
+				refset.Clear()
 			}
 			wireBytes = wireBytes[1: ]
 			continue
@@ -200,7 +199,7 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 		return HeaderSet{}, errors.New("Could not decode")
 	}
 
-	for _, h := range refset.Entries {
+	for h, _ := range refset.Entries {
 		found := false
 
 		for _, emitted := range headers {

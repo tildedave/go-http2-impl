@@ -1,24 +1,38 @@
 package hpack
 
 type ReferenceSet struct {
-	Entries []*HeaderField
+	Entries map[*HeaderField]int
+}
+
+func NewReferenceSet() *ReferenceSet {
+	refset := ReferenceSet{}
+	refset.Entries = make(map[*HeaderField]int)
+
+	return &refset
 }
 
 func (refset *ReferenceSet) Add(ref *HeaderField) {
-	refset.Entries = append(refset.Entries, ref)
+	refset.Entries[ref] = 1
 }
 
 func (refset *ReferenceSet) Remove(h *HeaderField) {
-	idx := -1
-	for i, ref := range refset.Entries {
-		if ref == h {
-			idx = i
+	delete(refset.Entries, h)
+}
+
+func (refset *ReferenceSet) Clear() {
+	refset.Entries = make(map[*HeaderField]int)
+}
+
+func (refset *ReferenceSet) Contains(ref *HeaderField) bool {
+	return refset.Entries[ref] != 0
+}
+
+func (refset *ReferenceSet) ContainsHeader(h HeaderField) bool {
+	for refHeader, _ := range refset.Entries {
+		if *refHeader == h {
+			return true
 		}
 	}
-	if idx == -1 {
-		return
-	}
 
-	entries := refset.Entries
-	refset.Entries = append(entries[0:idx], entries[idx + 1:]...)
+	return false
 }

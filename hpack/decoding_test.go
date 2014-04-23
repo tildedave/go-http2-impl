@@ -90,3 +90,18 @@ func TestDecodeWithLiteralFieldWithNeverIndexing(t *testing.T) {
 	assert.Equal(t, headers.Headers[0], HeaderField{ ":path", "/sample/path"})
 	assert.Equal(t, len(context.HeaderTable.Entries), 0)
 }
+
+func TestDecodeRemovesHeadersBasedOnDirective(t *testing.T) {
+	var headers HeaderSet
+
+	context := NewEncodingContext()
+
+	headers, _ = context.Decode("\x82\x87")
+	assert.Equal(t, len(headers.Headers), 2)
+
+	headers, _ = context.Decode("\x84\x89")
+	assert.Equal(t, len(headers.Headers), 2)
+
+	t.Log(headers)
+	t.Log(context)
+}
