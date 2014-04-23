@@ -12,7 +12,7 @@ func TestEncodeHeaderFieldAddsToHeaderTable(t *testing.T) {
 
 	context.EncodeField(HeaderField{":method", "GET"})
 
-	assert.Equal(t, context.HeaderTable.Entries[0],
+	assert.Equal(t, *context.HeaderTable.Entries[0],
 		HeaderField{":method", "GET"})
 }
 
@@ -36,8 +36,8 @@ func TestEncodeHeaderFieldFromStaticTable(t *testing.T) {
 	encoded = context.EncodeField(HeaderField{":path", "/"})
 	assert.Equal(t, encoded, "\x85")
 
-	assert.Equal(t, context.HeaderTable.Entries[0], HeaderField{":path", "/"})
-	assert.Equal(t, context.HeaderTable.Entries[1], HeaderField{":method", "GET"})
+	assert.Equal(t, *context.HeaderTable.Entries[0], HeaderField{":path", "/"})
+	assert.Equal(t, *context.HeaderTable.Entries[1], HeaderField{":method", "GET"})
 }
 
 func TestEncodeHeaderFieldWithNameAndLiteralValue(t *testing.T) {
@@ -76,7 +76,7 @@ func TestEncodeHeaderFieldWithLiteralNameAndLiteralValue(t *testing.T) {
 
 	assert.Equal(t, h, "\x40\x0dcustom-header\x0apuppy-dogs")
 
-	assert.Equal(t, context.HeaderTable.Entries[0],
+	assert.Equal(t, *context.HeaderTable.Entries[0],
 		HeaderField{"custom-header", "puppy-dogs"})
 }
 

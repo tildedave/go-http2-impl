@@ -24,7 +24,7 @@ func NewEncodingContext() *EncodingContext {
 }
 
 func (context *EncodingContext) AddHeader(h HeaderField) {
-	ref := context.HeaderTable.AddHeader(h)
+	ref := context.HeaderTable.AddHeader(h, context.ReferenceSet)
 	if ref != nil {
 		context.ReferenceSet.Add(ref)
 	}

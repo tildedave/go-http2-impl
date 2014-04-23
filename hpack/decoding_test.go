@@ -109,8 +109,28 @@ func TestDecodeRemovesHeadersBasedOnDirective(t *testing.T) {
 }
 
 func TestDecodeWithEviction(t *testing.T) {
+	var headers HeaderSet
+
 	context := NewEncodingContext()
 	context.HeaderTable.MaxSize = 256
 
-	_, _ = context.Decode("\x48\x03\x33\x30\x32\x59\x07\x70\x72\x69\x76\x61\x74\x65\x63\x1d\x4d\x6f\x6e\x2c\x20\x32\x31\x20\x4f\x63\x74\x20\x32\x30\x31\x33\x20\x32\x30\x3a\x31\x33\x3a\x32\x31\x20\x47\x4d\x54\x71\x17\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
+	headers, _ = context.Decode("\x48\x03\x33\x30\x32\x59\x07\x70\x72\x69\x76\x61\x74\x65\x63\x1d\x4d\x6f\x6e\x2c\x20\x32\x31\x20\x4f\x63\x74\x20\x32\x30\x31\x33\x20\x32\x30\x3a\x31\x33\x3a\x32\x31\x20\x47\x4d\x54\x71\x17\x68\x74\x74\x70\x73\x3a\x2f\x2f\x77\x77\x77\x2e\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d")
+
+	assert.Equal(t, len(headers.Headers), 4)
+	assert.Equal(t, headers.Headers, []HeaderField{
+		HeaderField{":status", "302" },
+		HeaderField{"cache-control", "private"},
+		HeaderField{"date", "Mon, 21 Oct 2013 20:13:21 GMT"},
+		HeaderField{"location", "https://www.example.com"},
+	})
+
+	headers, _ = context.Decode("\x84\x8c")
+
+	assert.Equal(t, len(headers.Headers), 4)
+	assert.Equal(t, headers.Headers, []HeaderField{
+		HeaderField{":status", "200" },
+		HeaderField{"cache-control", "private"},
+		HeaderField{"date", "Mon, 21 Oct 2013 20:13:21 GMT"},
+		HeaderField{"location", "https://www.example.com"},
+	})
 }
