@@ -171,8 +171,13 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 		if wireBytes[0] & IndexedMask == IndexedMask {
 			index := decodeInteger(&wireBytes, 7)
 			header := table.HeaderAt(int(index))
-			headers = append(headers, header)
-			context.AddHeader(header)
+
+			if refset.Contains(header) {
+				refset.Remove(header)
+			} else {
+				headers = append(headers, *header)
+				context.AddHeader(*header)
+			}
 
 			continue
 		}

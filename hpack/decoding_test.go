@@ -99,7 +99,9 @@ func TestDecodeRemovesHeadersBasedOnDirective(t *testing.T) {
 	headers, _ = context.Decode("\x82\x87")
 	assert.Equal(t, len(headers.Headers), 2)
 
-	headers, _ = context.Decode("\x84\x89")
+	t.Log(context.ReferenceSet, context.HeaderTable)
+
+	headers, _ = context.Decode("\x81\x89")
 	assert.Equal(t, len(headers.Headers), 2)
 
 	t.Log(headers)
