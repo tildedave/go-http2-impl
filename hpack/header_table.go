@@ -1,29 +1,32 @@
 package hpack
 
 type HeaderTable struct {
-	Entries []HeaderField
+	Entries []*HeaderField
 	MaxSize int
 }
 
-func (t *HeaderTable) AddHeader(header HeaderField) *HeaderField {
+func (t *HeaderTable) AddHeader(header HeaderField, refset *ReferenceSet) *HeaderField {
 	for _, table_h := range t.Entries {
-		if table_h == header {
+		if *table_h == header {
 			return nil
 		}
 	}
 
 	for ; t.Size() + header.Size() > t.MaxSize ; {
 		// eviction
+		evicted := t.Entries[len(t.Entries) - 1]
+		refset.Remove(evicted)
+
 		t.Entries = t.Entries[0:len(t.Entries) - 1]
 	}
 
-	t.Entries = append([]HeaderField{ header }, t.Entries...)
-	return &(t.Entries[0])
+	t.Entries = append([]*HeaderField{ &header }, t.Entries...)
+	return t.Entries[0]
 }
 
 func (t HeaderTable) ContainsHeader(h HeaderField) int {
 	for idx, table_h := range t.Entries {
-		if table_h == h {
+		if *table_h == h {
 			return idx + 1
 		}
 	}
@@ -52,9 +55,9 @@ func (t HeaderTable) ContainsName(name string) int {
 	return 0
 }
 
-func (t HeaderTable) HeaderAt(idx int) HeaderField {
+func (t HeaderTable) HeaderAt(idx int) *HeaderField {
 	if idx > len(t.Entries) {
-		return StaticTable[idx - 1 - len(t.Entries)]
+		return &(StaticTable[idx - 1 - len(t.Entries)])
 	}
 	return t.Entries[idx - 1]
 }

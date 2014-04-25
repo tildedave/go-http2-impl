@@ -6,6 +6,7 @@ func encodeLiteral(literal string) string {
 
 func decodeLiteral(wire *[]byte) string {
 	len := decodeInteger(wire, 7)
+
 	decoded := (*wire)[0:len]
 	*wire = (*wire)[len:]
 

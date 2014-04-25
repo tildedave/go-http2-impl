@@ -1,13 +1,14 @@
 package hpack
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
 )
 
 type EncodingContext struct {
 	HeaderTable HeaderTable
-	ReferenceSet ReferenceSet
+	ReferenceSet *ReferenceSet
 	Update struct {
 		ReferenceSetEmptying bool
 		MaximumHeaderTableSizeChange int
@@ -17,15 +18,15 @@ type EncodingContext struct {
 func NewEncodingContext() *EncodingContext {
 	context := &EncodingContext{}
 	context.HeaderTable.MaxSize = 1024
+	context.ReferenceSet = NewReferenceSet()
 
 	return context
 }
 
 func (context *EncodingContext) AddHeader(h HeaderField) {
-	ref := context.HeaderTable.AddHeader(h)
+	ref := context.HeaderTable.AddHeader(h, context.ReferenceSet)
 	if ref != nil {
-		refset := &context.ReferenceSet
-		refset.Entries = append(refset.Entries, ref)
+		context.ReferenceSet.Add(ref)
 	}
 }
 
@@ -57,21 +58,61 @@ func (context *EncodingContext) EncodeField(h HeaderField) string {
 	return string(0x40) + encodeLiteral(h.Name) + encodeLiteral(h.Value)
 }
 
+func (context *EncodingContext) encodeMissingHeaders(hs HeaderSet) string {
+	// Headers absent from reference set are encoded as their
+	// indexed encoding
+
+	encoded := ""
+	refset := context.ReferenceSet
+
+	absent := list.New()
+	for refHeader, _ := range refset.Entries {
+		present := false
+		for _, h := range hs.Headers {
+			if *refHeader == h {
+				present = true
+				break
+			}
+		}
+		if !present {
+			absent.PushBack(refHeader)
+		}
+	}
+
+	for e := absent.Front(); e != nil; e = e.Next() {
+		// find which index this was at in the header
+		// table, don't need to pop it from there tho
+
+		refHeader := e.Value.(*HeaderField)
+		idx := context.HeaderTable.ContainsHeader(*refHeader)
+		a := []byte(encodeInteger(idx, 7))
+		a[0] |= 0x80
+
+		encoded += string(a)
+
+		context.ReferenceSet.Remove(refHeader)
+	}
+
+	return encoded
+}
+
 func (context *EncodingContext) Encode(hs HeaderSet) string {
 	encoded := ""
 
+	// TODO: ideally encodeMissingHeaders detects this
 	if context.Update.ReferenceSetEmptying {
-		context.ReferenceSet = ReferenceSet{}
+		context.ReferenceSet = NewReferenceSet()
 		context.Update.ReferenceSetEmptying = false
 		encoded += "\x30"
 	}
 
-	refset := &context.ReferenceSet
+	encoded += context.encodeMissingHeaders(hs)
 
+	refset := context.ReferenceSet
 	for _, h := range hs.Headers {
 		mustEncode := true
 
-		for _, refHeader := range refset.Entries {
+		for refHeader, _ := range refset.Entries {
 			if *refHeader == h {
 				mustEncode = false
 			}
@@ -107,6 +148,7 @@ func decodeLiteralHeader(wireBytes *[]byte, indexBits uint, table *HeaderTable) 
 
 	nameHeader := table.HeaderAt(int(nameIndex))
 	value := decodeLiteral(wireBytes)
+
 	return HeaderField{ nameHeader.Name, value }
 }
 
@@ -115,23 +157,27 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 	wireBytes := []byte(wire)
 
 	table := &context.HeaderTable
-	refset := &context.ReferenceSet
+	refset := context.ReferenceSet
 
 	for ; len(wireBytes) > 0 ; {
-		if wireBytes[0] & ContextUpdateMask == ContextUpdateMask {
-			if wireBytes[0] & 0x30 == 0x30 {
-				// empty reference set
-				refset.Entries = []*HeaderField{}
-			}
+		if wireBytes[0] == 0x30 {
+			refset.Clear()
 			wireBytes = wireBytes[1: ]
 			continue
 		}
 
+		// TODO: Maximum header table size change
+
 		if wireBytes[0] & IndexedMask == IndexedMask {
 			index := decodeInteger(&wireBytes, 7)
 			header := table.HeaderAt(int(index))
-			headers = append(headers, header)
-			context.AddHeader(header)
+
+			if refset.Contains(header) {
+				refset.Remove(header)
+			} else {
+				headers = append(headers, *header)
+				context.AddHeader(*header)
+			}
 
 			continue
 		}
@@ -158,7 +204,7 @@ func (context *EncodingContext) Decode(wire string) (hs HeaderSet, err error) {
 		return HeaderSet{}, errors.New("Could not decode")
 	}
 
-	for _, h := range refset.Entries {
+	for h, _ := range refset.Entries {
 		found := false
 
 		for _, emitted := range headers {
