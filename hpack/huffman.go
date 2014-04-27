@@ -351,7 +351,12 @@ func buildHuffmanTree() {
 	}
 }
 
-func decodeHuffmanHelper(wire string, parent *huffmanNode) (string, error) {
+func isSequenceEndingSuffix(code HuffmanCode) bool {
+	eos := HuffmanEOS.bits >> uint(HuffmanEOS.bitLength - code.bitLength)
+	return eos & code.bits == eos
+}
+
+func decodeStringHuffman(wire string) (string, error) {
 	var code HuffmanCode
 	var node *huffmanNode
 	var remainingInOctet uint8
@@ -364,19 +369,14 @@ func decodeHuffmanHelper(wire string, parent *huffmanNode) (string, error) {
 
 	for ; len(wire) > 0 ; {
 		code = HuffmanCode{}
-		node = nil
 
 		// 0xEE
 		// 1110 1110
 
-		for ; node == nil ; {
+		for node = nil ; node == nil ; node = lookupCode(huffmanTree, code) {
 			if remainingInOctet == 0 {
-				// consume next
 				if len(wire) == 0 {
-					// confirm EOS
-
-					eos := HuffmanEOS.bits >> uint(HuffmanEOS.bitLength - code.bitLength)
-					if eos & code.bits == eos {
+					if isSequenceEndingSuffix(code) {
 						return encoded, nil
 					}
 
@@ -392,18 +392,12 @@ func decodeHuffmanHelper(wire string, parent *huffmanNode) (string, error) {
 			remainingInOctet -= 1
 			nextBit := uint32(a >> (remainingInOctet)) & 0x0001
 			code.bits = (code.bits << 1) | nextBit
-
-			node = lookupCode(huffmanTree, code)
 		}
 
 		encoded += string(node.value)
 	}
 
 	return encoded, nil
-}
-
-func decodeStringHuffman(wire string) (string, error) {
-	return decodeHuffmanHelper(wire, huffmanTree)
 }
 
 func EncodeHuffman(str string) string {
