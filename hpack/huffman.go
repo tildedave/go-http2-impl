@@ -1,7 +1,6 @@
 package hpack
 
 import (
-	"fmt"
 	"encoding/binary"
 	"errors"
 )
@@ -352,7 +351,7 @@ func buildHuffmanTree() {
 	}
 }
 
-func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) (string, error) {
+func decodeHuffmanHelper(wire string, parent *huffmanNode) (string, error) {
 	var code HuffmanCode
 	var node *huffmanNode
 	var remainingInOctet uint8
@@ -360,10 +359,10 @@ func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) (string, error) {
 	encoded := ""
 
 	remainingInOctet = 8
-	a := uint8((*wire)[0])
-	*wire = (*wire)[1:]
+	a := uint8(wire[0])
+	wire = wire[1:]
 
-	for ; len(*wire) > 0 ; {
+	for ; len(wire) > 0 ; {
 		code = HuffmanCode{}
 		node = nil
 
@@ -373,7 +372,7 @@ func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) (string, error) {
 		for ; node == nil ; {
 			if remainingInOctet == 0 {
 				// consume next
-				if len(*wire) == 0 {
+				if len(wire) == 0 {
 					// confirm EOS
 
 					eos := HuffmanEOS.bits >> uint(HuffmanEOS.bitLength - code.bitLength)
@@ -385,8 +384,8 @@ func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) (string, error) {
 				}
 
 				remainingInOctet = 8
-				a = uint8((*wire)[0])
-				*wire = (*wire)[1:]
+				a = uint8(wire[0])
+				wire = wire[1:]
 			}
 
 			code.bitLength++
@@ -403,8 +402,7 @@ func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) (string, error) {
 	return encoded, nil
 }
 
-func DecodeHuffman(wire *[]byte) (string, error) {
-	fmt.Println("decode")
+func decodeStringHuffman(wire string) (string, error) {
 	return decodeHuffmanHelper(wire, huffmanTree)
 }
 

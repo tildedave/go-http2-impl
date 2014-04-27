@@ -13,10 +13,15 @@ func encodeLiteralHuffman(literal string) string {
 }
 
 func decodeLiteral(wire *[]byte) string {
+	isHuffman := (*wire)[0] >> 7 == byte(0x01)
 	len := decodeInteger(wire, 7)
-
-	decoded := (*wire)[0:len]
+	toDecode := (*wire)[0:len]
 	*wire = (*wire)[len:]
 
-	return string(decoded)
+	if isHuffman {
+		decoded, _ := decodeStringHuffman(string(toDecode))
+		return decoded
+	} else {
+		return string(toDecode)
+	}
 }

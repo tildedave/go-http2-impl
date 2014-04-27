@@ -42,3 +42,11 @@ func TestDecodeStringLiteralThatOverflowsPrefix(t *testing.T) {
 	assert.Equal(t, decoded, expectedStr)
 	assert.Equal(t, wire, []byte{})
 }
+
+func  TestDecodeStringLiteralWithHuffman(t *testing.T) {
+	wire := []byte("\x8c\xe7\xcf\x9b\xeb\xe8\x9b\x6f\xb1\x6f\xa9\xb6\xff")
+	decoded := decodeLiteral(&wire)
+
+	assert.Equal(t, decoded, "www.example.com")
+	assert.Equal(t, wire, []byte{})
+}

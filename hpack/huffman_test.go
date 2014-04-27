@@ -96,8 +96,15 @@ func TestBuildHuffmanTreeWorks(t *testing.T) {
 }
 
 func TestDecodeSingleCharacterHuffman(t *testing.T) {
-	encoded := []byte("\xee\xff\xff\xee")
-	decoded, _ := DecodeHuffman(&encoded)
+	encoded := "\xee\xff\xff\xee"
+	decoded, _ := decodeStringHuffman(encoded)
 
 	assert.Equal(t, decoded, "C")
+}
+
+func TestDecodeLongerStringHuffman(t *testing.T) {
+	encoded := "\xe7\xcf\x9b\xeb\xe8\x9b\x6f\xb1\x6f\xa9\xb6\xff"
+	decoded, _ := decodeStringHuffman(encoded)
+
+	assert.Equal(t, decoded, "www.example.com")
 }
