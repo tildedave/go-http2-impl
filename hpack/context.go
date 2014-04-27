@@ -3,7 +3,6 @@ package hpack
 import (
 	"container/list"
 	"errors"
-	"fmt"
 )
 
 type EncodingContext struct {
@@ -132,10 +131,6 @@ const (
 	ContextUpdateMask = 0x20
 	LiteralNoIndexMask = 0x00
 )
-
-func fmtIsNotUnused() {
-	fmt.Println("line to not complain about unused fmt import")
-}
 
 func decodeLiteralHeader(wireBytes *[]byte, indexBits uint, table *HeaderTable) (HeaderField) {
 	nameIndex := decodeInteger(wireBytes, indexBits)

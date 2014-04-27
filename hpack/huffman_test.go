@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func TestCombineHuffmanNothingWithSomething(t *testing.T) {
+	overflow, code := combineHuffman(
+		HuffmanCode{},
+		HuffmanCode{"\x03\xff\xff\xba", 26},
+	)
+
+	assert.Equal(t, code, HuffmanCode{ "\x03\xff\xff\xba", 26 })
+	assert.Equal(t, overflow, "")
+}
+
 func TestCombineHuffman32Bits(t *testing.T) {
 	overflow, code := combineHuffman(
 		HuffmanCode{"\x1f", 6},
@@ -51,9 +61,39 @@ func TestCombineHuffmanWithOverflow(t *testing.T) {
 */
 }
 
+func TestCombineHuffmanWithEOS(t *testing.T) {
+	overflow, code := combineHuffman(
+		HuffmanTable[0x43],
+		HuffmanEOS,
+	)
+
+	assert.Equal(t, code, HuffmanCode{ "\x00\x00\x00\x00", 1 })
+	assert.Equal(t, overflow, "\xee\xff\xff\xee")
+}
+
+func TestCombineMessedUpHuffmanWithEOS(t *testing.T) {
+	overflow, code := combineHuffman(
+		HuffmanCode{"\x00\x00" + HuffmanTable[0x43].bits, 8},
+		HuffmanEOS,
+	)
+
+	assert.Equal(t, code, HuffmanCode{ "\x00\x00\x00\x00", 1 })
+	assert.Equal(t, overflow, "\xee\xff\xff\xee")
+}
+
 func TestEncodeSingleCharacterHuffman(t *testing.T) {
 	encoded := EncodeHuffman("C")
 
+/*
+"C" -> 1110 1110
+EOS -> 000|1 1111 1111 1111 1111 1101 1100
+
+1110 1110 1111 1111 1111 1111 1110 1110 | 0
+
+1ffffdc
+
+ */
+
 	assert.Equal(t, len(encoded), 4)
-	assert.Equal(t, encoded, "\xee\x1f\xff\xfd")
+	assert.Equal(t, encoded, "\xee\xff\xff\xee")
 }

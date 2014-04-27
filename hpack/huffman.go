@@ -2,7 +2,6 @@ package hpack
 
 import (
 	"encoding/binary"
-	"fmt"
 )
 
 type HuffmanCode struct {
@@ -272,19 +271,22 @@ var HuffmanTable = map[byte]HuffmanCode{
 var HuffmanEOS = HuffmanCode{ "\x01\xff\xff\xdc", 25 }
 
 func EncodeHuffman(str string) string {
-	strBytes := []byte(str)
-	encoded := []HuffmanCode{}
+	var overflow string
 
-	for _, b := range strBytes {
-		code := HuffmanTable[b]
-		encoded = append(encoded, code)
+	partialCode := HuffmanCode{}
+	encoded := ""
+
+	for _, b := range []byte(str) {
+		overflow, partialCode = combineHuffman(partialCode, HuffmanTable[b])
+		encoded += overflow
 	}
 
-	fmt.Println(encoded)
+	if partialCode.bitLength > 0 {
+		overflow, partialCode = combineHuffman(partialCode, HuffmanEOS)
+		encoded += overflow
+	}
 
-	// encode EOS
-
-	return ""
+	return encoded
 }
 
 func padToUint32(a HuffmanCode) uint32 {
@@ -296,16 +298,18 @@ func padToUint32(a HuffmanCode) uint32 {
 	asInt32[2] = 0
 	asInt32[3] = 0
 
-	if a.bitLength <= 8 {
+	if len(bits) == 0 {
+		// nothing
+	} else if len(bits) <= 1 {
 		asInt32[3] = bits[0]
-	} else if a.bitLength <= 16 {
+	} else if len(bits) <= 2 {
 		asInt32[3] = bits[1]
 		asInt32[2] = bits[0]
- 	} else if a.bitLength <= 24 {
+	} else if len(bits) <= 3 {
 		asInt32[3] = bits[2]
 		asInt32[2] = bits[1]
 		asInt32[1] = bits[0]
-	} else if a.bitLength <= 32 {
+	} else if len(bits) <= 4 {
 		asInt32[3] = bits[3]
 		asInt32[2] = bits[2]
 		asInt32[1] = bits[1]
@@ -360,8 +364,8 @@ func combineHuffman(a HuffmanCode, b HuffmanCode) (string, HuffmanCode) {
 		overflow := make([]byte, 4)
 		paddedB := padToUint32(b)
 		overflowBits := uint(b.bitLength - (32 - a.bitLength))
-		binary.BigEndian.PutUint32(overflow, paddedA | (paddedB >> overflowBits))
 
+		binary.BigEndian.PutUint32(overflow, paddedA | (paddedB >> overflowBits))
 		code := make([]byte, 4)
 		binary.BigEndian.PutUint32(code, paddedB & ((1 << overflowBits) - 1))
 
