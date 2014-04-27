@@ -1,9 +1,13 @@
 package hpack
 
+import (
+	"encoding/binary"
+	"fmt"
+)
 
 type HuffmanCode struct {
-	code string
-	bitLength int
+	bits string
+	bitLength uint
 }
 
 var HuffmanTable = map[byte]HuffmanCode{
@@ -266,3 +270,101 @@ var HuffmanTable = map[byte]HuffmanCode{
 }
 
 var HuffmanEOS = HuffmanCode{ "\x01\xff\xff\xdc", 25 }
+
+func EncodeHuffman(str string) string {
+	strBytes := []byte(str)
+	encoded := []HuffmanCode{}
+
+	for _, b := range strBytes {
+		code := HuffmanTable[b]
+		encoded = append(encoded, code)
+	}
+
+	fmt.Println(encoded)
+
+	// encode EOS
+
+	return ""
+}
+
+func padToUint32(a HuffmanCode) uint32 {
+	bits := []byte(a.bits)
+
+	asInt32 := make([]byte, 4)
+	asInt32[0] = 0
+	asInt32[1] = 0
+	asInt32[2] = 0
+	asInt32[3] = 0
+
+	if a.bitLength <= 8 {
+		asInt32[3] = bits[0]
+	} else if a.bitLength <= 16 {
+		asInt32[3] = bits[1]
+		asInt32[2] = bits[0]
+ 	} else if a.bitLength <= 24 {
+		asInt32[3] = bits[2]
+		asInt32[2] = bits[1]
+		asInt32[1] = bits[0]
+	} else if a.bitLength <= 32 {
+		asInt32[3] = bits[3]
+		asInt32[2] = bits[2]
+		asInt32[1] = bits[1]
+		asInt32[0] = bits[0]
+	}
+
+	return binary.BigEndian.Uint32(asInt32)
+}
+
+func combineHuffman(a HuffmanCode, b HuffmanCode) (string, HuffmanCode) {
+	// align a to MSB
+	// fill in b
+	// if this overflows 32 bits, return a string
+	// return the combined huffman encoding
+
+	// 1f 6 bits
+	// 00011111
+	// first 2 in octet are garbage
+
+	// 12 bits
+	// in table as
+	// 0000 0001 1111 1111
+	// align to
+	// 0001 1111 1111 0000
+
+	// align a to the start of the octet
+	// but if we aren't at the start of octet, align a otherwise
+
+	// 32 bits
+	paddedA := padToUint32(a)
+	paddedA = paddedA << uint(32 - a.bitLength)
+	// we now have 32 - a.bitLength bits left in our uint
+	// two options:
+	// 1) b fits in the rest of the uint32, in which case we return another code
+	//    (ugh code must be aligned back to LSB)
+	//  2) b overflows uint32, in which case we
+	//   i) return the uint32
+	//   ii) return a code aligned to LSB
+
+	if b.bitLength < 32 - a.bitLength {
+		// b fits
+		paddedB := padToUint32(b)
+		paddedB = paddedB << uint(32 - a.bitLength - b.bitLength)
+		remaining := uint(32 - a.bitLength - b.bitLength)
+
+		code := make([]byte, 4)
+		binary.BigEndian.PutUint32(code, (paddedA | paddedB) >> remaining)
+
+		return "", HuffmanCode{ string(code), a.bitLength + b.bitLength }
+	} else {
+		// overflow
+		overflow := make([]byte, 4)
+		paddedB := padToUint32(b)
+		overflowBits := uint(b.bitLength - (32 - a.bitLength))
+		binary.BigEndian.PutUint32(overflow, paddedA | (paddedB >> overflowBits))
+
+		code := make([]byte, 4)
+		binary.BigEndian.PutUint32(code, paddedB & ((1 << overflowBits) - 1))
+
+		return string(overflow), HuffmanCode{ string(code), overflowBits }
+	}
+}
