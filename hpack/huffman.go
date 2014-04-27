@@ -3,6 +3,7 @@ package hpack
 import (
 	"fmt"
 	"encoding/binary"
+	"errors"
 )
 
 type HuffmanCode struct {
@@ -315,11 +316,15 @@ func insertCode(parent *huffmanNode, code HuffmanCode, val uint8) {
 
 func lookupCode(parent *huffmanNode, code HuffmanCode) *huffmanNode {
 	if parent == nil {
-		return parent
+		return nil
 	}
 
 	if parent.isLeaf {
 		return parent
+	}
+
+	if code.bitLength == 0 {
+		return nil
 	}
 
 	code.bitLength -= 1
@@ -347,30 +352,58 @@ func buildHuffmanTree() {
 	}
 }
 
-func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) string {
-/*
-	var next *huffmanNode
-	remainingBits := 8
+func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) (string, error) {
+	var code HuffmanCode
+	var node *huffmanNode
+	var remainingInOctet uint8
+
+	encoded := ""
+
+	remainingInOctet = 8
+	a := uint8((*wire)[0])
+	*wire = (*wire)[1:]
+
 	for ; len(*wire) > 0 ; {
-		var mask uint32
+		code = HuffmanCode{}
+		node = nil
 
-		a := *wire[0]
-		*wire = *wire[1:]
+		// 0xEE
+		// 1110 1110
 
-		// start with 1, keep increasing # of bits read until we hit
-		// something in the huffman tree or need to pull the next byte
+		for ; node == nil ; {
+			if remainingInOctet == 0 {
+				// consume next
+				if len(*wire) == 0 {
+					// confirm EOS
 
-		// how to extract the first bit?
-		tree := huffmanTree
+					eos := HuffmanEOS.bits >> uint(HuffmanEOS.bitLength - code.bitLength)
+					if eos & code.bits == eos {
+						return encoded, nil
+					}
 
+					return "", errors.New("Sequence did not terminate with EOS marker")
+				}
 
-		mask := 1 << remainingBits
+				remainingInOctet = 8
+				a = uint8((*wire)[0])
+				*wire = (*wire)[1:]
+			}
+
+			code.bitLength++
+			remainingInOctet -= 1
+			nextBit := uint32(a >> (remainingInOctet)) & 0x0001
+			code.bits = (code.bits << 1) | nextBit
+
+			node = lookupCode(huffmanTree, code)
+		}
+
+		encoded += string(node.value)
 	}
-*/
-	return ""
+
+	return encoded, nil
 }
 
-func DecodeHuffman(wire *[]byte) string {
+func DecodeHuffman(wire *[]byte) (string, error) {
 	fmt.Println("decode")
 	return decodeHuffmanHelper(wire, huffmanTree)
 }

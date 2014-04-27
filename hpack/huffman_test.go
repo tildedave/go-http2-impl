@@ -86,18 +86,18 @@ EOS -> 000|1 1111 1111 1111 1111 1101 1100
 	assert.Equal(t, encoded, "\xee\xff\xff\xee")
 }
 
-func TestBuildHuffmanTree(t *testing.T) {
+func TestBuildHuffmanTreeWorks(t *testing.T) {
 	buildHuffmanTree()
 
 	for i, code := range HuffmanTable {
-		node :=lookupCode(huffmanTree, code)
+		node := lookupCode(huffmanTree, code)
 		assert.Equal(t, i, node.value)
 	}
 }
 
 func TestDecodeSingleCharacterHuffman(t *testing.T) {
 	encoded := []byte("\xee\xff\xff\xee")
-	decoded := DecodeHuffman(&encoded)
+	decoded, _ := DecodeHuffman(&encoded)
 
 	assert.Equal(t, decoded, "C")
 }
