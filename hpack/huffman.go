@@ -1,6 +1,7 @@
 package hpack
 
 import (
+	"fmt"
 	"encoding/binary"
 )
 
@@ -122,9 +123,9 @@ var HuffmanTable = map[byte]HuffmanCode{
 	byte(109): HuffmanCode{0x2d, 6},
 	byte(110): HuffmanCode{0x2e, 6},
 	byte(111): HuffmanCode{0x0d, 5},
-	byte(112): HuffmanCode{ 0x2f, 6},
+	byte(112): HuffmanCode{0x2f, 6},
 	byte(113): HuffmanCode{0x01fc, 9},
-	byte(114): HuffmanCode{ 0x30, 6},
+	byte(114): HuffmanCode{0x30, 6},
 	byte(115): HuffmanCode{0x31, 6},
 	byte(116): HuffmanCode{0x0e, 5},
 	byte(117): HuffmanCode{0x71, 7},
@@ -268,9 +269,111 @@ var HuffmanTable = map[byte]HuffmanCode{
 	byte(255): HuffmanCode{0x01ffffdb, 25},
 }
 
-var HuffmanEOS = HuffmanCode{ 0x01ffffdc,25 }
+var HuffmanEOS = HuffmanCode{0x01ffffdc, 25}
 
-// TODO: huffman tree for decoding
+type huffmanNode struct {
+	value uint8
+	isLeaf bool
+	left, right *huffmanNode
+}
+
+func newHuffmanNode() *huffmanNode {
+	return &huffmanNode{0, false, nil, nil}
+}
+
+func insertCode(parent *huffmanNode, code HuffmanCode, val uint8) {
+	if code.bitLength == 0 {
+		// this must be the place
+		parent.value = val
+		parent.isLeaf = true
+	} else {
+		// determine if we need to add this to the left (0) or right (1)
+		// of the parent
+
+		var next *huffmanNode
+
+		code.bitLength -= 1
+		mask := uint32(1 << code.bitLength)
+		if code.bits & mask == mask {
+			// right (1)
+			next = parent.right
+			if next == nil {
+				next = newHuffmanNode()
+				parent.right = next
+			}
+		} else {
+			// left (0)
+			next = parent.left
+			if next == nil {
+				next = newHuffmanNode()
+				parent.left = next
+			}
+		}
+		insertCode(next, code, val)
+	}
+}
+
+func lookupCode(parent *huffmanNode, code HuffmanCode) *huffmanNode {
+	if parent == nil {
+		return parent
+	}
+
+	if parent.isLeaf {
+		return parent
+	}
+
+	code.bitLength -= 1
+	mask := uint32(1 << code.bitLength)
+
+	if code.bits & mask == mask {
+		return lookupCode(parent.right, code)
+	} else {
+		return lookupCode(parent.left, code)
+	}
+}
+
+var huffmanTree *huffmanNode
+
+func buildHuffmanTree() {
+	// goal is to build a relationship between huffman codes
+	// decode will pass in a prefix, one byte at a time
+	// prefix navigates through < and >
+	// if it hits a leaf node (==), done
+
+	huffmanTree = newHuffmanNode()
+
+	for i, code := range HuffmanTable {
+		insertCode(huffmanTree, code, i)
+	}
+}
+
+func decodeHuffmanHelper(wire *[]byte, parent *huffmanNode) string {
+/*
+	var next *huffmanNode
+	remainingBits := 8
+	for ; len(*wire) > 0 ; {
+		var mask uint32
+
+		a := *wire[0]
+		*wire = *wire[1:]
+
+		// start with 1, keep increasing # of bits read until we hit
+		// something in the huffman tree or need to pull the next byte
+
+		// how to extract the first bit?
+		tree := huffmanTree
+
+
+		mask := 1 << remainingBits
+	}
+*/
+	return ""
+}
+
+func DecodeHuffman(wire *[]byte) string {
+	fmt.Println("decode")
+	return decodeHuffmanHelper(wire, huffmanTree)
+}
 
 func EncodeHuffman(str string) string {
 	var overflow string
