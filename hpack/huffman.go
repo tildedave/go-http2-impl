@@ -3,7 +3,6 @@ package hpack
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 )
 
 type HuffmanCode struct {
@@ -368,7 +367,7 @@ func decodeStringHuffman(wire string) (string, error) {
 	a := uint8(wire[0])
 	wire = wire[1:]
 
-	for ; len(wire) > 0 ; {
+	for ; ; {
 		code = HuffmanCode{}
 
 		// 0xEE
@@ -397,8 +396,6 @@ func decodeStringHuffman(wire string) (string, error) {
 
 		encoded += string(node.value)
 	}
-
-	return encoded, nil
 }
 
 func EncodeHuffman(str string) string {
@@ -419,9 +416,6 @@ func EncodeHuffman(str string) string {
 		// 20 -> 24
 		// etc
 		numBits := partialCode.bitLength + ((32 - partialCode.bitLength) % 8)
-
-		fmt.Println(numBits, str)
-		fmt.Println("fit the combination of", partialCode, " in ", numBits)
 		overflow, partialCode = combineHuffman(partialCode, HuffmanEOS, numBits)
 		encoded += overflow
 	}

@@ -1,15 +1,11 @@
 package hpack
 
-import "fmt"
-
 func encodeLiteral(literal string) string {
 	return encodeInteger(len(literal), 7) + literal
 }
 
 func encodeLiteralHuffman(literal string) string {
 	str := EncodeHuffman(literal)
-
-	fmt.Println("encoding stuff", literal, []byte(str), len(str))
 
 	lenBytes := []byte(encodeInteger(len(str), 7))
 	lenBytes[0] |= 0x80
@@ -30,7 +26,6 @@ func decodeLiteral(wire *[]byte) string {
 		}
 
 		decoded, _ := decodeStringHuffman(string(toDecode))
-		fmt.Println("it was" , decoded)
 		return decoded
 	} else {
 		return string(toDecode)

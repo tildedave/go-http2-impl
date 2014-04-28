@@ -170,7 +170,6 @@ func TestDecodeWithHuffman(t *testing.T) {
 
 	headers, _ = context.Decode("\x30\x85\x8c\x8b\x84\x40\x88\x57\x1c\x5c\xdb\x73\x7b\x2f\xaf\x89\x57\x1c\x5c\xdb\x73\x72\x4d\x9c\x57")
 
-
 	assert.Equal(t, headers.Headers, []HeaderField{
 		HeaderField{":method", "GET"},
 		HeaderField{":scheme", "https"},

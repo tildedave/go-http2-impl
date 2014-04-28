@@ -56,3 +56,11 @@ func TestDecodeStringLiteralWithHuffman(t *testing.T) {
 	assert.Equal(t, decoded, "www.example.com")
 	assert.Equal(t, wire, []byte{})
 }
+
+func TestDecodeAnotherStringLiteralWithHuffman(t *testing.T) {
+	wire := []byte("\x89\x57\x1c\x5c\xdb\x73\x72\x4d\x9c\x57")
+	decoded := decodeLiteral(&wire)
+
+	assert.Equal(t, decoded, "custom-value")
+	assert.Equal(t, wire, []byte{})
+}
