@@ -6,6 +6,7 @@ func encodeLiteral(literal string) string {
 
 func encodeLiteralHuffman(literal string) string {
 	str := EncodeHuffman(literal)
+
 	lenBytes := []byte(encodeInteger(len(str), 7))
 	lenBytes[0] |= 0x80
 
@@ -13,10 +14,20 @@ func encodeLiteralHuffman(literal string) string {
 }
 
 func decodeLiteral(wire *[]byte) string {
+	isHuffman := (*wire)[0] >> 7 == byte(0x01)
 	len := decodeInteger(wire, 7)
 
-	decoded := (*wire)[0:len]
+	toDecode := (*wire)[0:len]
 	*wire = (*wire)[len:]
 
-	return string(decoded)
+	if isHuffman {
+		if huffmanTree == nil {
+			buildHuffmanTree()
+		}
+
+		decoded, _ := decodeStringHuffman(string(toDecode))
+		return decoded
+	} else {
+		return string(toDecode)
+	}
 }

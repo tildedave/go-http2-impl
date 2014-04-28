@@ -99,8 +99,6 @@ func TestDecodeRemovesHeadersBasedOnDirective(t *testing.T) {
 	headers, _ = context.Decode("\x82\x87")
 	assert.Equal(t, len(headers.Headers), 2)
 
-	t.Log(context.ReferenceSet, context.HeaderTable)
-
 	headers, _ = context.Decode("\x81\x89")
 	assert.Equal(t, len(headers.Headers), 2)
 
@@ -145,4 +143,39 @@ func TestDecodeWithEviction(t *testing.T) {
 		HeaderField{":status", "200" },
 		HeaderField{"set-cookie", "foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1"},
 	})
+}
+
+func TestDecodeWithHuffman(t *testing.T) {
+	var headers HeaderSet
+
+	context := NewEncodingContext()
+	headers, _ = context.Decode("\x82\x87\x86\x44\x8c\xe7\xcf\x9b\xeb\xe8\x9b\x6f\xb1\x6f\xa9\xb6\xff")
+
+	assert.Equal(t, headers.Headers, []HeaderField{
+		HeaderField{":method", "GET"},
+		HeaderField{":scheme", "http"},
+		HeaderField{":path", "/"},
+		HeaderField{":authority", "www.example.com"},
+	})
+
+	headers, _ = context.Decode("\x5c\x86\xb9\xb9\x94\x95\x56\xbf")
+
+	assert.Equal(t, headers.Headers, []HeaderField{
+		HeaderField{"cache-control", "no-cache"},
+		HeaderField{":method", "GET"},
+		HeaderField{":scheme", "http"},
+		HeaderField{":path", "/"},
+		HeaderField{":authority", "www.example.com"},
+	})
+
+	headers, _ = context.Decode("\x30\x85\x8c\x8b\x84\x40\x88\x57\x1c\x5c\xdb\x73\x7b\x2f\xaf\x89\x57\x1c\x5c\xdb\x73\x72\x4d\x9c\x57")
+
+	assert.Equal(t, headers.Headers, []HeaderField{
+		HeaderField{":method", "GET"},
+		HeaderField{":scheme", "https"},
+		HeaderField{":path", "/index.html"},
+		HeaderField{":authority", "www.example.com"},
+		HeaderField{"custom-key", "custom-value"},
+	})
+
 }

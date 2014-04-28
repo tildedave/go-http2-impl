@@ -9,6 +9,7 @@ func TestCombineHuffmanNothingWithSomething(t *testing.T) {
 	overflow, code := combineHuffman(
 		HuffmanCode{},
 		HuffmanCode{0x03ffffba, 26},
+		32,
 	)
 
 	assert.Equal(t, code, HuffmanCode{ 0x03ffffba, 26 })
@@ -19,6 +20,7 @@ func TestCombineHuffman32Bits(t *testing.T) {
 	overflow, code := combineHuffman(
 		HuffmanCode{0x1f, 6},
 		HuffmanCode{0x03ffffba, 26},
+		32,
 	)
 
 	assert.Equal(t, code, HuffmanCode{ 0x00000000, 0 })
@@ -29,6 +31,7 @@ func TestCombineHuffmanWithLessThan32Bits(t *testing.T) {
 	overflow, code := combineHuffman(
 		HuffmanCode{0x1f, 6},
 		HuffmanCode{0x07, 5},
+		32,
 	)
 
 /*
@@ -45,6 +48,7 @@ func TestCombineHuffmanWithOverflow(t *testing.T) {
 	overflow, code := combineHuffman(
 		HuffmanCode{0x03ffffba, 26},
 		HuffmanCode{0x03ffffd2, 26},
+		32,
 	)
 
 	assert.Equal(t, code.bitLength, uint(20))
@@ -63,6 +67,7 @@ func TestCombineHuffmanWithEOS(t *testing.T) {
 	overflow, code := combineHuffman(
 		HuffmanTable[0x43],
 		HuffmanEOS,
+		32,
 	)
 
 	assert.Equal(t, code, HuffmanCode{ 0x00000000, 1 })
@@ -82,10 +87,55 @@ EOS -> 000|1 1111 1111 1111 1111 1101 1100
 
  */
 
-	assert.Equal(t, len(encoded), 4)
-	assert.Equal(t, encoded, "\xee\xff\xff\xee")
+	assert.Equal(t, len(encoded), 1)
+	assert.Equal(t, encoded, "\xee")
+}
+
+func TestEncodeSingleCharacterWithEOSPadding(t *testing.T) {
+	encoded := EncodeHuffman("N")
+
+	/*
+         "N" -> 1101100
+         EOS starts with a '1'
+         Result: 1101 1001
+         */
+
+	assert.Equal(t, len(encoded), 1)
+	assert.Equal(t, encoded, "\xd9")
+}
+
+
+func TestEncodeLongerStringHuffman(t *testing.T) {
+	encoded := EncodeHuffman("custom-key")
+
+	assert.Equal(t, encoded, "\x57\x1c\x5c\xdb\x73\x7b\x2f\xaf")
+}
+
+func TestEncodeAnotherLongerStringHuffman(t *testing.T) {
+	encoded := EncodeHuffman("custom-value")
+
+	assert.Equal(t, encoded, "\x57\x1c\x5c\xdb\x73\x72\x4d\x9c\x57")
+}
+
+func TestBuildHuffmanTreeWorks(t *testing.T) {
+	buildHuffmanTree()
+
+	for i, code := range HuffmanTable {
+		node := lookupCode(huffmanTree, code)
+		assert.Equal(t, i, node.value)
+	}
 }
 
 func TestDecodeSingleCharacterHuffman(t *testing.T) {
+	encoded := "\xee\xff\xff\xee"
+	decoded, _ := decodeStringHuffman(encoded)
 
+	assert.Equal(t, decoded, "C")
+}
+
+func TestDecodeLongerStringHuffman(t *testing.T) {
+	encoded := "\xe7\xcf\x9b\xeb\xe8\x9b\x6f\xb1\x6f\xa9\xb6\xff"
+	decoded, _ := decodeStringHuffman(encoded)
+
+	assert.Equal(t, decoded, "www.example.com")
 }
