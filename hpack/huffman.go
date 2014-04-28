@@ -283,7 +283,6 @@ func newHuffmanNode() *huffmanNode {
 
 func insertCode(parent *huffmanNode, code HuffmanCode, val uint8) {
 	if code.bitLength == 0 {
-		// this must be the place
 		parent.value = val
 		parent.isLeaf = true
 	} else {
@@ -339,11 +338,6 @@ func lookupCode(parent *huffmanNode, code HuffmanCode) *huffmanNode {
 var huffmanTree *huffmanNode
 
 func buildHuffmanTree() {
-	// goal is to build a relationship between huffman codes
-	// decode will pass in a prefix, one byte at a time
-	// prefix navigates through < and >
-	// if it hits a leaf node (==), done
-
 	huffmanTree = newHuffmanNode()
 
 	for i, code := range HuffmanTable {
@@ -369,9 +363,6 @@ func decodeStringHuffman(wire string) (string, error) {
 
 	for ; ; {
 		code = HuffmanCode{}
-
-		// 0xEE
-		// 1110 1110
 
 		for node = nil ; node == nil ; node = lookupCode(huffmanTree, code) {
 			if remainingInOctet == 0 {
@@ -410,7 +401,7 @@ func EncodeHuffman(str string) string {
 	}
 
 	if partialCode.bitLength > 0 {
-		// remaining octet is
+		// fill in the rest of the octet with the EOS marker
 		// 7 -> 8
 		// 15 -> 16
 		// 20 -> 24
@@ -423,7 +414,7 @@ func EncodeHuffman(str string) string {
 	return encoded
 }
 
-func combineHuffman(a HuffmanCode, b HuffmanCode, len uint) (string, HuffmanCode) {
+func combineHuffman(a HuffmanCode, b HuffmanCode, numBits uint) (string, HuffmanCode) {
 	// align a to MSB
 	// fill in b
 	// if this overflows 32 bits, return a string
@@ -442,10 +433,10 @@ func combineHuffman(a HuffmanCode, b HuffmanCode, len uint) (string, HuffmanCode
 	// align a to the start of the octet
 	// but if we aren't at the start of octet, align a otherwise
 
-	// len bits
-	paddedA := a.bits << uint(len - a.bitLength)
+	// numBits bits
+	paddedA := a.bits << uint(numBits - a.bitLength)
 
-	// we now have len - a.bitLength bits left in our uint
+	// we now have numBits - a.bitLength bits left in our uint
 	// two options:
 	// 1) b fits in the rest of the uint32, in which case we return another code
 	//    (code must be aligned back to LSB)
@@ -453,10 +444,10 @@ func combineHuffman(a HuffmanCode, b HuffmanCode, len uint) (string, HuffmanCode
 	//   i) return the uint32
 	//   ii) return a code aligned to LSB
 
-	if b.bitLength < len - a.bitLength {
+	if b.bitLength < numBits - a.bitLength {
 		// b fits
-		paddedB := b.bits << uint(len - a.bitLength - b.bitLength)
-		remaining := uint(len - a.bitLength - b.bitLength)
+		paddedB := b.bits << uint(numBits - a.bitLength - b.bitLength)
+		remaining := uint(numBits - a.bitLength - b.bitLength)
 
 		return "", HuffmanCode{
 			(paddedA | paddedB) >> remaining,
@@ -465,11 +456,11 @@ func combineHuffman(a HuffmanCode, b HuffmanCode, len uint) (string, HuffmanCode
 	} else {
 		// overflow
 		overflow := make([]byte, 4)
-		overflowBits := uint(b.bitLength - (len - a.bitLength))
+		overflowBits := uint(b.bitLength - (numBits - a.bitLength))
 
 		binary.BigEndian.PutUint32(overflow, paddedA | (b.bits >> overflowBits))
 
-		return string(overflow[((32 - len) / 8):]), HuffmanCode{
+		return string(overflow[((32 - numBits) / 8):]), HuffmanCode{
 			b.bits & ((1 << overflowBits) - 1),
 			overflowBits,
 		}
