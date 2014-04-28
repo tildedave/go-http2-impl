@@ -3,6 +3,7 @@ package hpack
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 type HuffmanCode struct {
@@ -407,19 +408,28 @@ func EncodeHuffman(str string) string {
 	encoded := ""
 
 	for _, b := range []byte(str) {
-		overflow, partialCode = combineHuffman(partialCode, HuffmanTable[b])
+		overflow, partialCode = combineHuffman(partialCode, HuffmanTable[b], 32)
 		encoded += overflow
 	}
 
 	if partialCode.bitLength > 0 {
-		overflow, partialCode = combineHuffman(partialCode, HuffmanEOS)
+		// remaining octet is
+		// 7 -> 8
+		// 15 -> 16
+		// 20 -> 24
+		// etc
+		numBits := partialCode.bitLength + ((32 - partialCode.bitLength) % 8)
+
+		fmt.Println(numBits, str)
+		fmt.Println("fit the combination of", partialCode, " in ", numBits)
+		overflow, partialCode = combineHuffman(partialCode, HuffmanEOS, numBits)
 		encoded += overflow
 	}
 
 	return encoded
 }
 
-func combineHuffman(a HuffmanCode, b HuffmanCode) (string, HuffmanCode) {
+func combineHuffman(a HuffmanCode, b HuffmanCode, len uint) (string, HuffmanCode) {
 	// align a to MSB
 	// fill in b
 	// if this overflows 32 bits, return a string
@@ -438,10 +448,10 @@ func combineHuffman(a HuffmanCode, b HuffmanCode) (string, HuffmanCode) {
 	// align a to the start of the octet
 	// but if we aren't at the start of octet, align a otherwise
 
-	// 32 bits
-	paddedA := a.bits << uint(32 - a.bitLength)
+	// len bits
+	paddedA := a.bits << uint(len - a.bitLength)
 
-	// we now have 32 - a.bitLength bits left in our uint
+	// we now have len - a.bitLength bits left in our uint
 	// two options:
 	// 1) b fits in the rest of the uint32, in which case we return another code
 	//    (code must be aligned back to LSB)
@@ -449,10 +459,10 @@ func combineHuffman(a HuffmanCode, b HuffmanCode) (string, HuffmanCode) {
 	//   i) return the uint32
 	//   ii) return a code aligned to LSB
 
-	if b.bitLength < 32 - a.bitLength {
+	if b.bitLength < len - a.bitLength {
 		// b fits
-		paddedB := b.bits << uint(32 - a.bitLength - b.bitLength)
-		remaining := uint(32 - a.bitLength - b.bitLength)
+		paddedB := b.bits << uint(len - a.bitLength - b.bitLength)
+		remaining := uint(len - a.bitLength - b.bitLength)
 
 		return "", HuffmanCode{
 			(paddedA | paddedB) >> remaining,
@@ -461,11 +471,11 @@ func combineHuffman(a HuffmanCode, b HuffmanCode) (string, HuffmanCode) {
 	} else {
 		// overflow
 		overflow := make([]byte, 4)
-		overflowBits := uint(b.bitLength - (32 - a.bitLength))
+		overflowBits := uint(b.bitLength - (len - a.bitLength))
 
 		binary.BigEndian.PutUint32(overflow, paddedA | (b.bits >> overflowBits))
 
-		return string(overflow), HuffmanCode{
+		return string(overflow[((32 - len) / 8):]), HuffmanCode{
 			b.bits & ((1 << overflowBits) - 1),
 			overflowBits,
 		}

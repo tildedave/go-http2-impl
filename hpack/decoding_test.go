@@ -176,8 +176,7 @@ func TestDecodeWithHuffman(t *testing.T) {
 		HeaderField{":scheme", "https"},
 		HeaderField{":path", "/index.html"},
 		HeaderField{":authority", "www.example.com"},
-		// TODO: example in Draft appears incorrect
-		HeaderField{"custom-key", "custom-valu"},
+		HeaderField{"custom-key", "custom-value"},
 	})
 
 }
