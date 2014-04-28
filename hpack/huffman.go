@@ -402,10 +402,8 @@ func EncodeHuffman(str string) string {
 
 	if partialCode.bitLength > 0 {
 		// fill in the rest of the octet with the EOS marker
-		// 7 -> 8
-		// 15 -> 16
-		// 20 -> 24
-		// etc
+		// TODO: in theory these will only ever be '1's based on how the EOS
+		// marker works, might be able to simplify here
 		numBits := partialCode.bitLength + ((32 - partialCode.bitLength) % 8)
 		overflow, partialCode = combineHuffman(partialCode, HuffmanEOS, numBits)
 		encoded += overflow
