@@ -4,8 +4,17 @@ import (
 	"github.com/tildedave/go-http2-impl/frame"
 )
 
-func Respond(data []byte) (frame.Frame, bool) {
-	f := frame.GOAWAY{}
+type Conn interface {
+	Write(b []byte) (n int, err error)
+	Close() error
+}
 
-	return f, false
+type Server struct {
+	conn Conn
+}
+
+func (s *Server) Respond(wire string) {
+	f := frame.GOAWAY{0, 1, "Did not include connection preface"}
+	s.conn.Write(f.Marshal())
+	s.conn.Close()
 }
