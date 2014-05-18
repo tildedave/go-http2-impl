@@ -21,16 +21,15 @@ func (c *MockConn) Write(b []byte) (int, error) {
 }
 
 
-func NewTestServer() Server {
-	s := Server{}
-	s.conn = new(MockConn)
+func NewTestServer() (Server, *MockConn) {
+	conn := new(MockConn)
+	s := Server{ conn }
 
-	return s
+	return s, conn
 }
 
 func TestRespondWithoutPreface(t *testing.T) {
-	server := NewTestServer()
-	conn := server.conn.(*MockConn)
+	server, conn := NewTestServer()
 
 	f := frame.GOAWAY{0, 1, "Did not include connection preface"}
 	bytes := f.Marshal()
@@ -39,6 +38,18 @@ func TestRespondWithoutPreface(t *testing.T) {
 	conn.On("Write", bytes).Return(len(bytes), nil)
 
 	server.Respond("not the preface")
+
+	conn.Mock.AssertExpectations(t)
+}
+
+func TestRespondWithThePreface(t *testing.T) {
+	server, conn := NewTestServer()
+
+	// also needs to write settings frame too.
+	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+	conn.On("Write", []byte(preface)).Return(len(preface), nil)
+
+	server.Respond("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 
 	conn.Mock.AssertExpectations(t)
 }

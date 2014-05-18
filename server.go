@@ -13,8 +13,16 @@ type Server struct {
 	conn Conn
 }
 
+const preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
 func (s *Server) Respond(wire string) {
-	f := frame.GOAWAY{0, 1, "Did not include connection preface"}
-	s.conn.Write(f.Marshal())
-	s.conn.Close()
+	if wire != preface {
+		f := frame.GOAWAY{0, 1, "Did not include connection preface"}
+		s.conn.Write(f.Marshal())
+		s.conn.Close()
+		return
+	}
+
+	s.conn.Write([]byte(preface))
+	// TODO: SETTINGS frame
 }
