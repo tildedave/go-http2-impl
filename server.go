@@ -19,16 +19,20 @@ const preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
 func (s *Server) InitiateConn(conn Conn) error {
 	scanner := bufio.NewScanner(conn)
-	stopped := scanner.Scan()
 	str := ""
 
-	if stopped != false {
+	// TODO: connection upgrade
+	for stopped := scanner.Scan() ; stopped != false ; stopped = scanner.Scan() {
 		str += scanner.Text() + "\r\n"
 		if !strings.HasPrefix(preface, str) {
 			f := frame.GOAWAY{0, 1, "Did not include connection preface"}
 			conn.Write(f.Marshal())
 			conn.Close()
 			return nil
+		}
+
+		if preface == str {
+			break
 		}
 	}
 
