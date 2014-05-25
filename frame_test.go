@@ -404,7 +404,7 @@ func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
 	uf, err := Unmarshal(&b)
 
 	assert.Nil(t, err)
-	assert.IsType(t, uf, DATA{})
+	assert.IsType(t, DATA{}, uf)
 	assert.Equal(t, uf, f)
 	assert.Equal(t, len(b), 0)
 }
@@ -424,7 +424,7 @@ func TestUnmarshalDATAWithLargePadding(t *testing.T) {
 	uf, err := Unmarshal(&b)
 
 	assert.Nil(t, err)
-	assert.IsType(t, uf, DATA{})
+	assert.IsType(t, DATA{}, uf)
 	assert.Equal(t, uf, f)
 	assert.Equal(t, len(b), 0)
 }
@@ -437,7 +437,7 @@ func TestUnmarshalDATAWithEndStream(t *testing.T) {
 	uf, err := Unmarshal(&b)
 
 	assert.Nil(t, err)
-	assert.IsType(t, uf, DATA{})
+	assert.IsType(t, DATA{}, uf)
 	assert.True(t, uf.(DATA).Flags.END_STREAM)
 }
 
@@ -449,6 +449,18 @@ func TestUnmarshalDATAWithEndSegment(t *testing.T) {
 	uf, err := Unmarshal(&b)
 
 	assert.Nil(t, err)
-	assert.IsType(t, uf, DATA{})
+	assert.IsType(t, DATA{}, uf)
 	assert.True(t, uf.(DATA).Flags.END_SEGMENT)
+}
+
+func TestUnmarshalPING(t *testing.T) {
+	f := PING{}
+	f.OpaqueData = 2198179
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, PING{}, uf)
+	assert.Equal(t, f, uf)
 }

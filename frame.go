@@ -229,20 +229,33 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 	toDecode := (*wire)[0:payloadLen]
 	*wire = (*wire)[payloadLen:]
 
+	var err error
+	var f Frame
+
 	switch frameType {
 	case 0x0:
-		f, err := unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
-		if err != nil {
-			return nil, err
-		}
-		return f, nil
+		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
+	case 0x6:
+		// TODO: if stream id is set, send PROTOCOL_ERROR
+		// TODO: if length field is not 8, send FRAME_SIZE_ERROR
+		f, err = unmarshalPingPayload(frameFlags, string(toDecode))
 	}
 
-	return nil, nil
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func flagIsSet(flags uint8, mask uint8) bool {
 	return flags & mask == mask
+}
+
+func unmarshalPingPayload(frameFlags uint8, payload string) (Frame, error) {
+	f := PING{}
+	f.OpaqueData = binary.BigEndian.Uint64([]byte(payload))
+
+	return f, nil
 }
 
 func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
