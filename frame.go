@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"encoding/binary"
 )
 
@@ -14,6 +15,7 @@ type base struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
 type DATA struct {
+	StreamIdentifier uint32
 	Data    string
 	Padding string
 
@@ -135,6 +137,7 @@ func paddingHeaders(b *base, padding string) []byte {
 func (f DATA) Marshal() []byte {
 	b := base{}
 	b.Type = 0x0
+	b.StreamIdentifier = f.StreamIdentifier
 
 	payload := paddingHeaders(&b, f.Padding)
 	payload = append(payload, f.Data...)
@@ -209,6 +212,60 @@ func (f SETTINGS) Marshal() []byte {
 	return b.Marshal()
 }
 
-func Unmarshal(wireBytes *[]byte) (interface{}, error) {
+func Unmarshal(wire *[]byte) (Frame, error) {
+	// TODO: validation that all this is well formed.
+	payloadLen  := binary.BigEndian.Uint16([]byte{(*wire)[0] & 0x3F, (*wire)[1]})
+	frameType := (*wire)[2]
+	frameFlags := (*wire)[3]
+	streamIdentifier := binary.BigEndian.Uint32([]byte{
+		(*wire)[4] & 0x7F,
+		(*wire)[5],
+		(*wire)[6],
+		(*wire)[7],
+	})
+	*wire = (*wire)[8:]
+	toDecode := (*wire)[0:payloadLen]
+	*wire = (*wire)[payloadLen:]
+
+	switch frameType {
+	case 0x0:
+		f, err := unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
+		if err != nil {
+			return nil, err
+		}
+		return f, nil
+	}
+
 	return nil, nil
+}
+
+func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
+	// Check flags for pad high/pad low
+
+	paddingLengthBytes := []byte{0x00, 0x00}
+	if frameFlags & 0x10 == 0x10 {
+		// padHigh is present
+		paddingLengthBytes[0] = payload[0]
+		payload = payload[1:]
+	}
+	if frameFlags & 0x08 == 0x08 {
+		// padLow is present
+		paddingLengthBytes[1] = payload[0]
+		payload = payload[1:]
+	}
+
+	paddingLength := binary.BigEndian.Uint16(paddingLengthBytes)
+	dataLength := uint16(len(payload)) - paddingLength
+	data := payload[0:dataLength]
+	payload = payload[dataLength:]
+	padding := payload[0:paddingLength]
+
+	f := DATA{}
+	f.Data = data
+	f.Padding = padding
+	f.StreamIdentifier = streamIdentifier
+
+	fmt.Println(nil)
+
+	return f, nil
 }

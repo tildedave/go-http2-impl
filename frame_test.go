@@ -396,9 +396,15 @@ func TestMarshalSETTINGSWithACKFlag(t *testing.T) {
 
 func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
 	f := DATA{
-		Data:    "This is the data associated with the data frame",
-		Padding: "This padding is less than 256 bytes",
+		StreamIdentifier: 37,
+		Data:             "This is the data associated with the data frame",
+		Padding:          "This padding is less than 256 bytes",
 	}
 	b := f.Marshal()
-	Unmarshal(&b)
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, uf, DATA{})
+	assert.Equal(t, uf, f)
+	assert.Equal(t, len(b), 0)
 }
