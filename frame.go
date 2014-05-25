@@ -76,6 +76,31 @@ type Frame interface {
 	Marshal() []byte
 }
 
+const (
+	NO_ERROR = 0
+	PROTOCOL_ERROR = 1
+	INTERNAL_ERROR = 2
+	FLOW_CONTROL_ERROR = 3
+	SETTINGS_TIMEOUT = 4
+	STREAM_CLOSED = 5
+	FRAME_SIZE_ERROR = 6
+	REFUSED_STREAM = 7
+	CANCEL = 8
+	COMPRESSION_ERROR = 9
+	CONNECT_ERROR = 10
+	ENHANCE_YOUR_CALM = 11
+	INADEQUATE_SECURITY = 12
+)
+
+type ConnectionError struct {
+	Code uint8
+}
+
+func (e ConnectionError) Error() string {
+	return "ConnectionError: " + string(e.Code)
+}
+
+
 func (f base) Marshal() []byte {
 	header := make([]byte, 8)
 	binary.BigEndian.PutUint16(header, uint16(len(f.Payload)))
@@ -236,8 +261,12 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 	case 0x0:
 		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x6:
-		// TODO: if stream id is set, send PROTOCOL_ERROR
-		// TODO: if length field is not 8, send FRAME_SIZE_ERROR
+		if streamIdentifier != 0 {
+			return nil, ConnectionError{PROTOCOL_ERROR}
+		}
+		if payloadLen != 8 {
+			return nil, ConnectionError{FRAME_SIZE_ERROR}
+		}
 		f, err = unmarshalPingPayload(frameFlags, string(toDecode))
 	}
 

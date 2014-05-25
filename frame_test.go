@@ -464,3 +464,27 @@ func TestUnmarshalPING(t *testing.T) {
 	assert.IsType(t, PING{}, uf)
 	assert.Equal(t, f, uf)
 }
+
+func TestUnmarshalPINGWithStreamIdentifierIsProtocolError(t *testing.T) {
+	f := PING{}
+	f.OpaqueData = 2198179
+
+	b := f.Marshal()
+	b[4] = 10
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, uf)
+	assert.Equal(t, err, ConnectionError{PROTOCOL_ERROR})
+}
+
+func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
+	f := PING{}
+	f.OpaqueData = 2198179
+	b := f.Marshal()
+	b[1] = 7
+
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, uf)
+	assert.Equal(t, err, ConnectionError{FRAME_SIZE_ERROR})
+}
