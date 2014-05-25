@@ -21,7 +21,7 @@ func (s *Server) InitiateConn(conn Conn) error {
 	scanner := bufio.NewScanner(conn)
 	str := ""
 
-	// TODO: connection upgrade
+	// TODO: connection upgrade from HTTP 1.0
 	for stopped := scanner.Scan() ; stopped != false ; stopped = scanner.Scan() {
 		str += scanner.Text() + "\r\n"
 		if !strings.HasPrefix(preface, str) {
