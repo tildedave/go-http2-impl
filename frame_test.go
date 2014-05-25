@@ -71,6 +71,7 @@ func TestMarshalFrameWithStreamIdentifier(t *testing.T) {
 func TestMarshalGOAWAY(t *testing.T) {
 	f := GOAWAY{}
 	f.ErrorCode = 12487291
+	f.AdditionalDebugData = "This is some additional debug info to help you"
 
 	marshalled := f.Marshal()
 
@@ -78,7 +79,7 @@ func TestMarshalGOAWAY(t *testing.T) {
 		"Type should have been marshalled as 0x7")
 	assert.Equal(t, frameFlags(marshalled), uint8(0),
 		"Should have set no flags")
-	assert.Equal(t, frameLength(marshalled), uint16(8),
+	assert.Equal(t, frameLength(marshalled), uint16(8 + len(f.AdditionalDebugData)),
 		"Length should have been 8 octets")
 
 	lastStreamId := binary.BigEndian.Uint32(marshalled[8:12])
@@ -464,7 +465,7 @@ func TestUnmarshalDATAWithNoStreamIdentifierIsAnError(t *testing.T) {
 	f := DATA{}
 	f.StreamIdentifier = 0
 
-	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR})
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "Data payload must have stream identifier"})
 }
 
 func TestUnmarshalDATAWithIncompatiblePaddingFlagsIsAProtocolError(t *testing.T) {
@@ -472,7 +473,7 @@ func TestUnmarshalDATAWithIncompatiblePaddingFlagsIsAProtocolError(t *testing.T)
 	b := f.Marshal()
 	b[3] = 0x10
 
-	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR})
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "PAD_HIGH was set but PAD_LOW was not set"})
 }
 
 func TestUnmarshalPING(t *testing.T) {
@@ -493,7 +494,7 @@ func TestUnmarshalPINGWithStreamIdentifierIsProtocolError(t *testing.T) {
 
 	b := f.Marshal()
 	b[4] = 10
-	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR})
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Ping payload must not have stream identifier"})
 }
 
 func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
@@ -502,5 +503,21 @@ func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
 	b := f.Marshal()
 	b[1] = 7
 
-	assertUnmarshalError(t, b, ConnectionError{FRAME_SIZE_ERROR})
+	assertUnmarshalError(t, b, ConnectionError{FRAME_SIZE_ERROR, "Ping payload must have length of 8"})
+}
+
+func TestUnmarshalGOAWAY(t *testing.T) {
+	f := GOAWAY{
+		LastStreamId: 0,
+		ErrorCode: PROTOCOL_ERROR,
+		AdditionalDebugData: "Malformed frame",
+	}
+	b := f.Marshal()
+	t.Log(b)
+
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, GOAWAY{}, uf)
+	assert.Equal(t, f, uf)
 }

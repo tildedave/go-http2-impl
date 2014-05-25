@@ -94,10 +94,11 @@ const (
 
 type ConnectionError struct {
 	Code uint8
+	Message string
 }
 
 func (e ConnectionError) Error() string {
-	return "ConnectionError: " + string(e.Code)
+	return fmt.Sprintf("ConnectionError: %s (%d)", e.Message, e.Code)
 }
 
 
@@ -118,7 +119,7 @@ func (f GOAWAY) Marshal() []byte {
 	payload := make([]byte, 8+len(f.AdditionalDebugData))
 	binary.BigEndian.PutUint32(payload[0:4], f.LastStreamId)
 	binary.BigEndian.PutUint32(payload[4:8], f.ErrorCode)
-	copy(payload, f.AdditionalDebugData)
+	copy(payload[8:], f.AdditionalDebugData)
 
 	b.Payload = string(payload)
 
@@ -260,17 +261,28 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 	switch frameType {
 	case 0x0:
 		if streamIdentifier == 0 {
-			return nil, ConnectionError{PROTOCOL_ERROR}
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"Data payload must have stream identifier",
+			}
 		}
 		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x6:
 		if streamIdentifier != 0 {
-			return nil, ConnectionError{PROTOCOL_ERROR}
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"Ping payload must not have stream identifier",
+			}
 		}
 		if payloadLen != 8 {
-			return nil, ConnectionError{FRAME_SIZE_ERROR}
+			return nil, ConnectionError{
+				FRAME_SIZE_ERROR,
+				"Ping payload must have length of 8",
+			}
 		}
 		f, err = unmarshalPingPayload(frameFlags, string(toDecode))
+	case 0x7:
+		f, err = unmarshalGoAwayPayload(string(toDecode))
 	}
 
 	if err != nil {
@@ -307,7 +319,7 @@ func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload str
 		paddingLengthBytes[0] = payload[0]
 		payload = payload[1:]
 		if !flagIsSet(frameFlags, 0x08) {
-			return nil, ConnectionError{PROTOCOL_ERROR}
+			return nil, ConnectionError{PROTOCOL_ERROR, "PAD_HIGH was set but PAD_LOW was not set"}
 		}
 	}
 	if flagIsSet(frameFlags, 0x08) {
@@ -318,7 +330,7 @@ func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload str
 	paddingLength := binary.BigEndian.Uint16(paddingLengthBytes)
 
 	if paddingLength > uint16(len(payload)) {
-		return nil, ConnectionError{PROTOCOL_ERROR}
+		return nil, ConnectionError{PROTOCOL_ERROR, "Padding length exceeded length of payload"}
 	}
 	dataLength := uint16(len(payload)) - paddingLength
 	f.Data = payload[0:dataLength]
@@ -328,4 +340,19 @@ func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload str
 	f.StreamIdentifier = streamIdentifier
 
 	return f, nil
+}
+
+func unmarshalGoAwayPayload(payload string) (Frame, error) {
+	lastStreamId := binary.BigEndian.Uint32([]byte{
+		payload[0] & 0x7F,
+		payload[1],
+		payload[2],
+		payload[3],
+	})
+
+	return GOAWAY{
+		LastStreamId:        lastStreamId,
+		ErrorCode:           binary.BigEndian.Uint32([]byte(payload[4:8])),
+		AdditionalDebugData: payload[8:],
+	}, nil
 }
