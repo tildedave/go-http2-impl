@@ -261,6 +261,7 @@ func TestMarshalHEADERSWithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
 	f.StreamDependency = 39781097
 	f.Flags.PRIORITY_DEPENDENCY = true
+	f.Flags.EXCLUSIVE = true
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 
 	marshalled := f.Marshal()
@@ -513,11 +514,53 @@ func TestUnmarshalGOAWAY(t *testing.T) {
 		AdditionalDebugData: "Malformed frame",
 	}
 	b := f.Marshal()
-	t.Log(b)
 
 	uf, err := Unmarshal(&b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, GOAWAY{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalHEADERS(t *testing.T) {
+	f := HEADERS{}
+	f.HeaderBlockFragment = "accept-encoding:gzip"
+	f.Flags.END_HEADERS = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, HEADERS{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
+	f := HEADERS{}
+	f.PriorityGroupIdentifier = 21984080
+	f.Weight = 123
+	f.HeaderBlockFragment = "accept-encoding:gzip"
+	f.Flags.PRIORITY_GROUP = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, HEADERS{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
+	f := HEADERS{}
+	f.StreamDependency = 39781097
+	f.Flags.PRIORITY_DEPENDENCY = true
+	f.Flags.EXCLUSIVE = true
+	f.HeaderBlockFragment = "accept-encoding:gzip"
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, HEADERS{}, uf)
 	assert.Equal(t, f, uf)
 }

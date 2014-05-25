@@ -41,6 +41,7 @@ type HEADERS struct {
 		END_HEADERS         bool
 		PRIORITY_GROUP      bool
 		PRIORITY_DEPENDENCY bool
+		EXCLUSIVE           bool
 	}
 }
 
@@ -197,7 +198,9 @@ func (f HEADERS) Marshal() []byte {
 	} else if f.Flags.PRIORITY_DEPENDENCY {
 		flagHeaders = flagHeaders[0:4]
 		binary.BigEndian.PutUint32(flagHeaders, f.StreamDependency)
-		flagHeaders[0] |= 0x80
+		if f.Flags.EXCLUSIVE {
+			flagHeaders[0] |= 0x80
+		}
 
 		b.Flags |= 0x40
 	}
@@ -267,6 +270,8 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 			}
 		}
 		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
+	case 0x1:
+		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x6:
 		if streamIdentifier != 0 {
 			return nil, ConnectionError{
@@ -302,36 +307,46 @@ func unmarshalPingPayload(frameFlags uint8, payload string) (Frame, error) {
 	return f, nil
 }
 
+func decodePaddingLength(frameFlags uint8, payload *string) (uint16, error) {
+	paddingLengthBytes := []byte{0x00, 0x00}
+	if flagIsSet(frameFlags, 0x10) {
+		// padHigh is present
+		paddingLengthBytes[0] = (*payload)[0]
+		*payload = (*payload)[1:]
+		if !flagIsSet(frameFlags, 0x08) {
+			return 0, ConnectionError{PROTOCOL_ERROR, "PAD_HIGH was set but PAD_LOW was not set"}
+		}
+	}
+	if flagIsSet(frameFlags, 0x08) {
+		// padLow is present
+		paddingLengthBytes[1] = (*payload)[0]
+		*payload = (*payload)[1:]
+	}
+	paddingLength := binary.BigEndian.Uint16(paddingLengthBytes)
+
+	if paddingLength > uint16(len(*payload)) {
+		return 0, ConnectionError{PROTOCOL_ERROR, "Padding length exceeded length of payload"}
+	}
+
+	return paddingLength, nil
+}
+
 func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
 	// Check flags for pad high/pad low
 
 	f := DATA{}
 
-	paddingLengthBytes := []byte{0x00, 0x00}
 	if flagIsSet(frameFlags, 0x1) {
 		f.Flags.END_STREAM = true
 	}
 	if flagIsSet(frameFlags, 0x2) {
 		f.Flags.END_SEGMENT = true
 	}
-	if flagIsSet(frameFlags, 0x10) {
-		// padHigh is present
-		paddingLengthBytes[0] = payload[0]
-		payload = payload[1:]
-		if !flagIsSet(frameFlags, 0x08) {
-			return nil, ConnectionError{PROTOCOL_ERROR, "PAD_HIGH was set but PAD_LOW was not set"}
-		}
+	paddingLength, err := decodePaddingLength(frameFlags, &payload)
+	if err != nil {
+		return nil, err
 	}
-	if flagIsSet(frameFlags, 0x08) {
-		// padLow is present
-		paddingLengthBytes[1] = payload[0]
-		payload = payload[1:]
-	}
-	paddingLength := binary.BigEndian.Uint16(paddingLengthBytes)
 
-	if paddingLength > uint16(len(payload)) {
-		return nil, ConnectionError{PROTOCOL_ERROR, "Padding length exceeded length of payload"}
-	}
 	dataLength := uint16(len(payload)) - paddingLength
 	f.Data = payload[0:dataLength]
 
@@ -355,4 +370,57 @@ func unmarshalGoAwayPayload(payload string) (Frame, error) {
 		ErrorCode:           binary.BigEndian.Uint32([]byte(payload[4:8])),
 		AdditionalDebugData: payload[8:],
 	}, nil
+}
+
+func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
+	f := HEADERS{}
+
+	paddingLength, err := decodePaddingLength(frameFlags, &payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if flagIsSet(frameFlags, 0x1) {
+		f.Flags.END_STREAM = true
+	}
+	if flagIsSet(frameFlags, 0x2) {
+		f.Flags.END_SEGMENT = true
+	}
+	if flagIsSet(frameFlags, 0x4) {
+		f.Flags.END_HEADERS = true
+	}
+	if flagIsSet(frameFlags, 0x20) {
+		// Priority group fields (priority group identifier and weight) are
+		// present
+		f.PriorityGroupIdentifier = binary.BigEndian.Uint32([]byte{
+			payload[0] & 0x7F,
+			payload[1],
+			payload[2],
+			payload[3],
+		})
+		f.Weight = payload[4]
+		f.Flags.PRIORITY_GROUP = true
+		payload = payload[5:]
+	}
+	if flagIsSet(frameFlags, 0x40) {
+		// Priority dependency fields are present
+		f.StreamDependency = binary.BigEndian.Uint32([]byte{
+			payload[0] & 0x7F,
+			payload[1],
+			payload[2],
+			payload[3],
+		})
+		f.Flags.PRIORITY_DEPENDENCY = true
+		if flagIsSet(payload[0], 0x80) {
+			f.Flags.EXCLUSIVE = true
+		}
+		payload = payload[4:]
+	}
+
+	payloadLength := uint16(len(payload)) - paddingLength
+
+	f.HeaderBlockFragment = payload[0:payloadLength]
+	f.Padding = payload[payloadLength:]
+
+	return f, nil
 }
