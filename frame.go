@@ -1,4 +1,4 @@
-package frame
+package main
 
 import (
 	"encoding/binary"
@@ -207,4 +207,8 @@ func (f SETTINGS) Marshal() []byte {
 	}
 
 	return b.Marshal()
+}
+
+func Unmarshal(wireBytes *[]byte) (interface{}, error) {
+	return nil, nil
 }

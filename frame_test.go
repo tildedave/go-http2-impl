@@ -1,4 +1,4 @@
-package frame
+package main
 
 import (
 	"encoding/binary"
@@ -392,4 +392,13 @@ func TestMarshalSETTINGSWithACKFlag(t *testing.T) {
 
 	assert.Equal(t, frameFlags(marshalled)&0x1, uint8(0x1),
 		"Expected frame to have set ACK flag of 0x1")
+}
+
+func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
+	f := DATA{
+		Data:    "This is the data associated with the data frame",
+		Padding: "This padding is less than 256 bytes",
+	}
+	b := f.Marshal()
+	Unmarshal(&b)
 }

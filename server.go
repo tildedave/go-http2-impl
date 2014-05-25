@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/tildedave/go-http2-impl/frame"
 	"bufio"
 	"strings"
 )
@@ -25,7 +24,7 @@ func (s *Server) InitiateConn(conn Conn) error {
 	for stopped := scanner.Scan() ; stopped != false ; stopped = scanner.Scan() {
 		str += scanner.Text() + "\r\n"
 		if !strings.HasPrefix(preface, str) {
-			f := frame.GOAWAY{0, 1, "Did not include connection preface"}
+			f := GOAWAY{0, 1, "Did not include connection preface"}
 			conn.Write(f.Marshal())
 			conn.Close()
 			return nil

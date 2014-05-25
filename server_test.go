@@ -2,7 +2,6 @@ package main
 
 import (
 	"testing"
-	"github.com/tildedave/go-http2-impl/frame"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,7 +40,7 @@ func NewTestServer() (Server, *MockConn) {
 func TestInitiateConnWithoutPreface(t *testing.T) {
 	server, conn := NewTestServer()
 
-	f := frame.GOAWAY{0, 1, "Did not include connection preface"}
+	f := GOAWAY{0, 1, "Did not include connection preface"}
 	bytes := f.Marshal()
 
 	conn.readData = "not the preface"
