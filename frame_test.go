@@ -489,6 +489,19 @@ func TestUnmarshalPING(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
+func TestUnmarshalPINGWithACK(t *testing.T) {
+	f := PING{}
+	f.OpaqueData = 2198179
+	f.Flags.ACK = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, PING{}, uf)
+	assert.Equal(t, f, uf)
+}
+
 func TestUnmarshalPINGWithStreamIdentifierIsProtocolError(t *testing.T) {
 	f := PING{}
 	f.OpaqueData = 2198179
@@ -584,4 +597,46 @@ func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolE
 	b[3] |= 0x40
 
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags"})
+}
+
+func TestUnmarshalSETTINGS(t *testing.T) {
+	f := SETTINGS{}
+	f.Parameters = []Parameter{
+		{SETTINGS_HEADER_TABLE_SIZE, 512},
+		{SETTINGS_INITIAL_WINDOW_SIZE, 120000},
+	}
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, SETTINGS{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalSETTINGSWithAck(t *testing.T) {
+	f := SETTINGS{}
+	f.Flags.ACK = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, SETTINGS{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalSETTINGSWithInvalidIdentifierIsAnError(t *testing.T) {
+	f := SETTINGS{}
+	f.Parameters = []Parameter{{15, 512}}
+
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "Settings frame specified invalid identifier: 15"})
+}
+
+func TestUnmarshalSETTINGSWithAckAndPayloadIsAConnectionError(t *testing.T) {
+	f := SETTINGS{}
+	f.Parameters = []Parameter{{SETTINGS_HEADER_TABLE_SIZE, 512}}
+	f.Flags.ACK = true
+
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{FRAME_SIZE_ERROR, "Payload of Settings frame with ACK flag must be empty"})
 }

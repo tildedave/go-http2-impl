@@ -46,6 +46,13 @@ type HEADERS struct {
 	}
 }
 
+const (
+	SETTINGS_HEADER_TABLE_SIZE = 1
+	SETTINGS_ENABLE_PUSH = 2
+	SETTINGS_MAX_CONCURRENT_STREAMS = 3
+	SETTINGS_INITIAL_WINDOW_SIZE = 4
+)
+
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#page-35
 type Parameter struct {
 	Identifier uint8
@@ -280,6 +287,8 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 			}
 		}
 		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, string(toDecode))
+	case 0x4:
+		f, err = unmarshalSettingsPayload(frameFlags, string(toDecode))
 	case 0x6:
 		if streamIdentifier != 0 {
 			return nil, ConnectionError{
@@ -311,6 +320,9 @@ func flagIsSet(flags uint8, mask uint8) bool {
 func unmarshalPingPayload(frameFlags uint8, payload string) (Frame, error) {
 	f := PING{}
 	f.OpaqueData = binary.BigEndian.Uint64([]byte(payload))
+	if flagIsSet(frameFlags, 0x1) {
+		f.Flags.ACK = true
+	}
 
 	return f, nil
 }
@@ -436,6 +448,42 @@ func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload 
 
 	f.HeaderBlockFragment = payload[0:payloadLength]
 	f.Padding = payload[payloadLength:]
+
+	return f, nil
+}
+
+func unmarshalSettingsPayload(frameFlags uint8, payload string) (Frame, error) {
+	f := SETTINGS{}
+	if flagIsSet(frameFlags, 0x1) {
+		f.Flags.ACK = true
+		if len(payload) > 0 {
+			return nil, ConnectionError{
+				FRAME_SIZE_ERROR,
+				"Payload of Settings frame with ACK flag must be empty",
+			}
+		}
+	}
+
+	for ; len(payload) > 0 ; {
+		if len(payload) < 5 {
+			return nil, ConnectionError{
+				FRAME_SIZE_ERROR,
+				"Improperly constructed Settings frame",
+			}
+		}
+		id := payload[0]
+		if id == 0 || id > 4 {
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				fmt.Sprintf("Settings frame specified invalid identifier: %d", id),
+			}
+		}
+		f.Parameters = append(f.Parameters, Parameter{
+			id,
+			binary.BigEndian.Uint32([]byte(payload[1:5])),
+		})
+		payload = payload[5:]
+	}
 
 	return f, nil
 }
