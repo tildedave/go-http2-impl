@@ -524,6 +524,7 @@ func TestUnmarshalGOAWAY(t *testing.T) {
 
 func TestUnmarshalHEADERS(t *testing.T) {
 	f := HEADERS{}
+	f.StreamIdentifier = 2139480
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 	f.Flags.END_HEADERS = true
 
@@ -537,6 +538,7 @@ func TestUnmarshalHEADERS(t *testing.T) {
 
 func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
 	f := HEADERS{}
+	f.StreamIdentifier = 2139480
 	f.PriorityGroupIdentifier = 21984080
 	f.Weight = 123
 	f.HeaderBlockFragment = "accept-encoding:gzip"
@@ -552,6 +554,7 @@ func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
 
 func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
+	f.StreamIdentifier = 2139480
 	f.StreamDependency = 39781097
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.Flags.EXCLUSIVE = true
@@ -563,4 +566,22 @@ func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
 	assert.Nil(t, err)
 	assert.IsType(t, HEADERS{}, uf)
 	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalHEADERSWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
+	f := HEADERS{}
+
+	b := f.Marshal()
+
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Headers payload must have stream identifier"})
+}
+
+func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
+	f := HEADERS{}
+	f.StreamIdentifier = 1
+	b := f.Marshal()
+	b[3] |= 0x20
+	b[3] |= 0x40
+
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags"})
 }

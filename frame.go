@@ -29,6 +29,7 @@ type DATA struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
 type HEADERS struct {
+	StreamIdentifier uint32
 	PriorityGroupIdentifier uint32
 	Weight                  uint8
 	StreamDependency        uint32
@@ -186,6 +187,7 @@ func (f DATA) Marshal() []byte {
 func (f HEADERS) Marshal() []byte {
 	b := base{}
 	b.Type = 0x1
+	b.StreamIdentifier = f.StreamIdentifier
 
 	flagHeaders := make([]byte, 0, 5)
 	if f.Flags.PRIORITY_GROUP {
@@ -271,6 +273,12 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		}
 		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x1:
+		if streamIdentifier == 0 {
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"Headers payload must have stream identifier",
+			}
+		}
 		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x6:
 		if streamIdentifier != 0 {
@@ -374,6 +382,7 @@ func unmarshalGoAwayPayload(payload string) (Frame, error) {
 
 func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
 	f := HEADERS{}
+	f.StreamIdentifier = streamIdentifier
 
 	paddingLength, err := decodePaddingLength(frameFlags, &payload)
 	if err != nil {
@@ -388,6 +397,12 @@ func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload 
 	}
 	if flagIsSet(frameFlags, 0x4) {
 		f.Flags.END_HEADERS = true
+	}
+	if flagIsSet(frameFlags, 0x20) && flagIsSet(frameFlags, 0x40) {
+		return nil, ConnectionError{
+			PROTOCOL_ERROR,
+			"Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags",
+		}
 	}
 	if flagIsSet(frameFlags, 0x20) {
 		// Priority group fields (priority group identifier and weight) are
