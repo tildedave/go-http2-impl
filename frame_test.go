@@ -408,3 +408,47 @@ func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
 	assert.Equal(t, uf, f)
 	assert.Equal(t, len(b), 0)
 }
+
+func TestUnmarshalDATAWithLargePadding(t *testing.T) {
+	f := DATA{
+		StreamIdentifier: 37,
+		Data:             "This is the data associated with the data frame",
+		Padding:          "",
+	}
+	paddingLength := 310
+	for i := 0; i < paddingLength; i++ {
+		f.Padding += string(0x00)
+	}
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, uf, DATA{})
+	assert.Equal(t, uf, f)
+	assert.Equal(t, len(b), 0)
+}
+
+func TestUnmarshalDATAWithEndStream(t *testing.T) {
+	f := DATA{}
+	f.Flags.END_STREAM = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, uf, DATA{})
+	assert.True(t, uf.(DATA).Flags.END_STREAM)
+}
+
+func TestUnmarshalDATAWithEndSegment(t *testing.T) {
+	f := DATA{}
+	f.Flags.END_SEGMENT = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, uf, DATA{})
+	assert.True(t, uf.(DATA).Flags.END_SEGMENT)
+}

@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 )
 
+var _ = fmt.Printf  // package fmt is now used
+
 // base is used internally to marshal other types of frames
 type base struct {
 	Type             uint8
@@ -239,33 +241,40 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 	return nil, nil
 }
 
+func flagIsSet(flags uint8, mask uint8) bool {
+	return flags & mask == mask
+}
+
 func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
 	// Check flags for pad high/pad low
 
+	f := DATA{}
+
 	paddingLengthBytes := []byte{0x00, 0x00}
-	if frameFlags & 0x10 == 0x10 {
+	if flagIsSet(frameFlags, 0x1) {
+		f.Flags.END_STREAM = true
+	}
+	if flagIsSet(frameFlags, 0x2) {
+		f.Flags.END_SEGMENT = true
+	}
+	if flagIsSet(frameFlags, 0x10) {
 		// padHigh is present
 		paddingLengthBytes[0] = payload[0]
 		payload = payload[1:]
 	}
-	if frameFlags & 0x08 == 0x08 {
+	if flagIsSet(frameFlags, 0x08) {
 		// padLow is present
 		paddingLengthBytes[1] = payload[0]
 		payload = payload[1:]
 	}
-
 	paddingLength := binary.BigEndian.Uint16(paddingLengthBytes)
+
 	dataLength := uint16(len(payload)) - paddingLength
-	data := payload[0:dataLength]
+	f.Data = payload[0:dataLength]
+
 	payload = payload[dataLength:]
-	padding := payload[0:paddingLength]
-
-	f := DATA{}
-	f.Data = data
-	f.Padding = padding
+	f.Padding = payload[0:paddingLength]
 	f.StreamIdentifier = streamIdentifier
-
-	fmt.Println(nil)
 
 	return f, nil
 }
