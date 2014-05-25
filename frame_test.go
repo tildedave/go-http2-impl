@@ -430,7 +430,7 @@ func TestUnmarshalDATAWithLargePadding(t *testing.T) {
 }
 
 func TestUnmarshalDATAWithEndStream(t *testing.T) {
-	f := DATA{}
+	f := DATA{StreamIdentifier: 123}
 	f.Flags.END_STREAM = true
 
 	b := f.Marshal()
@@ -442,7 +442,7 @@ func TestUnmarshalDATAWithEndStream(t *testing.T) {
 }
 
 func TestUnmarshalDATAWithEndSegment(t *testing.T) {
-	f := DATA{}
+	f := DATA{StreamIdentifier: 123}
 	f.Flags.END_SEGMENT = true
 
 	b := f.Marshal()
@@ -451,6 +451,28 @@ func TestUnmarshalDATAWithEndSegment(t *testing.T) {
 	assert.Nil(t, err)
 	assert.IsType(t, DATA{}, uf)
 	assert.True(t, uf.(DATA).Flags.END_SEGMENT)
+}
+
+func assertUnmarshalError(t *testing.T, b []byte, expectedError error) {
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, uf)
+	assert.Equal(t, err, expectedError)
+}
+
+func TestUnmarshalDATAWithNoStreamIdentifierIsAnError(t *testing.T) {
+	f := DATA{}
+	f.StreamIdentifier = 0
+
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR})
+}
+
+func TestUnmarshalDATAWithIncompatiblePaddingFlagsIsAProtocolError(t *testing.T) {
+	f := DATA{StreamIdentifier: 123, Data: "dagljkjagldka"}
+	b := f.Marshal()
+	b[3] = 0x10
+
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR})
 }
 
 func TestUnmarshalPING(t *testing.T) {
@@ -471,10 +493,7 @@ func TestUnmarshalPINGWithStreamIdentifierIsProtocolError(t *testing.T) {
 
 	b := f.Marshal()
 	b[4] = 10
-	uf, err := Unmarshal(&b)
-
-	assert.Nil(t, uf)
-	assert.Equal(t, err, ConnectionError{PROTOCOL_ERROR})
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR})
 }
 
 func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
@@ -483,8 +502,5 @@ func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
 	b := f.Marshal()
 	b[1] = 7
 
-	uf, err := Unmarshal(&b)
-
-	assert.Nil(t, uf)
-	assert.Equal(t, err, ConnectionError{FRAME_SIZE_ERROR})
+	assertUnmarshalError(t, b, ConnectionError{FRAME_SIZE_ERROR})
 }

@@ -259,6 +259,9 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 
 	switch frameType {
 	case 0x0:
+		if streamIdentifier == 0 {
+			return nil, ConnectionError{PROTOCOL_ERROR}
+		}
 		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x6:
 		if streamIdentifier != 0 {
@@ -303,6 +306,9 @@ func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload str
 		// padHigh is present
 		paddingLengthBytes[0] = payload[0]
 		payload = payload[1:]
+		if !flagIsSet(frameFlags, 0x08) {
+			return nil, ConnectionError{PROTOCOL_ERROR}
+		}
 	}
 	if flagIsSet(frameFlags, 0x08) {
 		// padLow is present
@@ -311,6 +317,9 @@ func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload str
 	}
 	paddingLength := binary.BigEndian.Uint16(paddingLengthBytes)
 
+	if paddingLength > uint16(len(payload)) {
+		return nil, ConnectionError{PROTOCOL_ERROR}
+	}
 	dataLength := uint16(len(payload)) - paddingLength
 	f.Data = payload[0:dataLength]
 
