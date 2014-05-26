@@ -125,6 +125,11 @@ type CONTINUATION struct {
 
 // TODO: ALTSVC frame
 
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.12
+type BLOCKED struct {
+	StreamId uint32
+}
+
 type Frame interface {
 	Marshal() []byte
 }
@@ -377,6 +382,14 @@ func (f CONTINUATION) Marshal() []byte {
 	return b.Marshal()
 }
 
+func (f BLOCKED) Marshal() []byte {
+	b := base{}
+	b.Type = 0xB
+	b.StreamId = f.StreamId
+
+	return b.Marshal()
+}
+
 func Unmarshal(wire []byte) (advance int, f Frame, err error) {
 	if len(wire) < 8 {
 		// Incomplete header
@@ -464,6 +477,14 @@ func Unmarshal(wire []byte) (advance int, f Frame, err error) {
 			}
 		}
 		f, err = unmarshalContinuationPayload(frameFlags, streamId, toDecode)
+	case 0xB:
+		if payloadLen != 0 {
+			return advance, nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"BLOCKED frame must have length of 0",
+			}
+		}
+		f = BLOCKED{StreamId: streamId}
 	}
 
 	if err != nil {

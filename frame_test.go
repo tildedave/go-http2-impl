@@ -492,7 +492,7 @@ func TestMarshalCONTINUATION(t *testing.T) {
 	marshalled := f.Marshal()
 
 	assert.Equal(t, frameType(marshalled), uint8(0x9),
-		"Expected frame type for push promise frame to be 0x9")
+		"Expected frame type for continuation frame to be 0x9")
 	assert.Equal(t, frameFlags(marshalled)&0x8, uint8(0x8),
 		"PAD_LOW flag should have been set")
 	assert.Equal(t, frameFlags(marshalled)&0x10, uint8(0x0),
@@ -511,6 +511,19 @@ func TestMarshalCONTINUATION_WithEndHeadersFlag(t *testing.T) {
 
 	assert.Equal(t, frameFlags(marshalled)&0x4, uint8(0x4),
 		"END_HEADERS flag should have been set")
+}
+
+func TestMarshalBLOCKED(t *testing.T) {
+	f := BLOCKED{}
+	f.StreamId = 123
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), uint8(0xB),
+		"Expected frame type for blocked frame to be 0xB")
+	assert.Equal(t, frameLength(marshalled), uint8(0),
+		"Expected frame length for blocked frame to be 0")
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[4:8]), f.StreamId)
 }
 
 func TestUnmarshalDATA_WithSmallPadding(t *testing.T) {
@@ -840,6 +853,18 @@ func TestUnmarshalCONTINUATION_NoStreamId(t *testing.T) {
 	f := CONTINUATION{}
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "CONTINUATION frame must have stream identifier"})
+}
+
+func TestUnmarshalBLOCKED(t *testing.T) {
+	f := BLOCKED{}
+	f.StreamId = 1234
+
+	b := f.Marshal()
+	_, uf, err := Unmarshal(b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, BLOCKED{}, uf)
+	assert.Equal(t, f, uf)
 }
 
 func TestUnmarshalIncompleteHeader(t *testing.T) {
