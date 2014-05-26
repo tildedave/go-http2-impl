@@ -79,7 +79,7 @@ func TestMarshalGOAWAY(t *testing.T) {
 		"Type should have been marshalled as 0x7")
 	assert.Equal(t, frameFlags(marshalled), uint8(0),
 		"Should have set no flags")
-	assert.Equal(t, frameLength(marshalled), uint16(8 + len(f.AdditionalDebugData)),
+	assert.Equal(t, frameLength(marshalled), uint16(8+len(f.AdditionalDebugData)),
 		"Length should have been 8 octets")
 
 	lastStreamId := binary.BigEndian.Uint32(marshalled[8:12])
@@ -522,8 +522,8 @@ func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
 
 func TestUnmarshalGOAWAY(t *testing.T) {
 	f := GOAWAY{
-		LastStreamId: 0,
-		ErrorCode: PROTOCOL_ERROR,
+		LastStreamId:        0,
+		ErrorCode:           PROTOCOL_ERROR,
 		AdditionalDebugData: "Malformed frame",
 	}
 	b := f.Marshal()
