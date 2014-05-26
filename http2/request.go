@@ -6,23 +6,56 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
+	"strings"
 )
 
 var _ = fmt.Println // fmt is now used
+
+type Header map[string][]string
+
+func (h Header) Add(key, value string) {
+	key = strings.ToLower(key)
+	if val, ok := h[key]; ok {
+		h[key] = append(val, value)
+	} else {
+		h[key] = []string{value}
+	}
+}
+
+func (h Header) Set(key, value string) {
+	key = strings.ToLower(key)
+	h[key] = []string{value}
+}
+
+func (h Header) Get(key string) string {
+	if len(h[key]) != 0 {
+		return h[key][0]
+	}
+
+	return ""
+}
 
 type Request struct {
 	Method string
 	URL    *url.URL
 	Body   io.ReadCloser
 	Conn   Conn
+	Header Header
 }
 
 func (r *Request) Write() {
-	hs := hpack.HeaderSet{[]hpack.HeaderField{
-		{":method", r.Method},
-		{":path", r.URL.Path},
-	}}
-	data := r.Conn.EncodeHeaderSet(hs)
+	headers := make([]hpack.HeaderField, len(r.Header)+2)
+	headers[0] = hpack.HeaderField{":method", r.Method}
+	headers[1] = hpack.HeaderField{":path", r.URL.Path}
+	i := 2
+	for key, vals := range r.Header {
+		for _, val := range vals {
+			headers[i] = hpack.HeaderField{key, val}
+			i++
+		}
+	}
+
+	data := r.Conn.EncodeHeaderSet(hpack.HeaderSet{headers})
 
 	h := HEADERS{}
 	h.HeaderBlockFragment = data
@@ -54,6 +87,7 @@ func NewRequest(method, urlStr string, body io.Reader, conn Conn) (*Request, err
 		Body:   rc,
 		Conn:   conn,
 	}
+	req.Header = make(Header)
 
 	return req, nil
 }
