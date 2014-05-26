@@ -48,6 +48,7 @@ type HEADERS struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.3
 type PRIORITY struct {
+	StreamIdentifier        uint32
 	PriorityGroupIdentifier uint32
 	Weight                  uint8
 	StreamDependency        uint32
@@ -248,6 +249,8 @@ func (f HEADERS) Marshal() []byte {
 func (f PRIORITY) Marshal() []byte {
 	b := base{}
 	b.Type = 0x2
+	b.StreamIdentifier = f.StreamIdentifier
+
 	var payload []byte
 	if f.Flags.PRIORITY_DEPENDENCY {
 		b.Flags |= 0x40
@@ -308,7 +311,7 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		if streamIdentifier == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Data payload must have stream identifier",
+				"Data frame must have stream identifier",
 			}
 		}
 		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
@@ -316,17 +319,25 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		if streamIdentifier == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Headers payload must have stream identifier",
+				"Headers frame must have stream identifier",
 			}
 		}
 		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, string(toDecode))
+	case 0x2:
+		if streamIdentifier == 0 {
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"Priority frame must have stream identifier",
+			}
+		}
+		f, err = unmarshalPriorityPayload(frameFlags, streamIdentifier, string(toDecode))
 	case 0x4:
 		f, err = unmarshalSettingsPayload(frameFlags, string(toDecode))
 	case 0x6:
 		if streamIdentifier != 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Ping payload must not have stream identifier",
+				"Ping frame must not have stream identifier",
 			}
 		}
 		if payloadLen != 8 {
@@ -482,6 +493,41 @@ func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload 
 	f.HeaderBlockFragment = payload[0:payloadLength]
 	f.Padding = payload[payloadLength:]
 
+	return f, nil
+}
+
+func unmarshalPriorityPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
+	f := PRIORITY{}
+	f.StreamIdentifier = streamIdentifier
+
+	if flagIsSet(frameFlags, 0x20) && flagIsSet(frameFlags, 0x40) {
+		return nil, ConnectionError{
+			PROTOCOL_ERROR,
+			"Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags",
+		}
+	}
+	if flagIsSet(frameFlags, 0x20) {
+		f.Flags.PRIORITY_GROUP = true
+		f.PriorityGroupIdentifier = binary.BigEndian.Uint32([]byte{
+			payload[0] & 0x7F,
+			payload[1],
+			payload[2],
+			payload[3],
+		})
+		f.Weight = uint8(payload[4])
+	}
+	if flagIsSet(frameFlags, 0x40) {
+		f.Flags.PRIORITY_DEPENDENCY = true
+		f.StreamDependency = binary.BigEndian.Uint32([]byte{
+			payload[0] & 0x7F,
+			payload[1],
+			payload[2],
+			payload[3],
+		})
+		if flagIsSet(payload[0], 0x80) {
+			f.Flags.EXCLUSIVE = true
+		}
+	}
 	return f, nil
 }
 

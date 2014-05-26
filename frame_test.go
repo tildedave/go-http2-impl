@@ -363,6 +363,7 @@ func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
 func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_DEPENDENCY = true
+	f.StreamIdentifier = 1111
 	f.StreamDependency = 123456
 
 	marshalled := f.Marshal()
@@ -370,6 +371,8 @@ func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
 		"Expected frame type of priority to be 0x2")
 	assert.Equal(t, frameFlags(marshalled)&0x40, uint8(0x40),
 		"Headers frame should have had priority group set")
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[4:8]), f.StreamIdentifier,
+		"Stream identifier was not correct in the payload")
 	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]), f.StreamDependency,
 		"Stream dependency was not correct in the payload")
 }
@@ -521,7 +524,7 @@ func TestUnmarshalDATAWithNoStreamIdentifierIsAnError(t *testing.T) {
 	f := DATA{}
 	f.StreamIdentifier = 0
 
-	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "Data payload must have stream identifier"})
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "Data frame must have stream identifier"})
 }
 
 func TestUnmarshalDATAWithIncompatiblePaddingFlagsIsAProtocolError(t *testing.T) {
@@ -563,7 +566,7 @@ func TestUnmarshalPINGWithStreamIdentifierIsProtocolError(t *testing.T) {
 
 	b := f.Marshal()
 	b[4] = 10
-	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Ping payload must not have stream identifier"})
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Ping frame must not have stream identifier"})
 }
 
 func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
@@ -641,11 +644,58 @@ func TestUnmarshalHEADERSWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
 
 	b := f.Marshal()
 
-	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Headers payload must have stream identifier"})
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Headers frame must have stream identifier"})
 }
 
 func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
 	f := HEADERS{}
+	f.StreamIdentifier = 1
+	b := f.Marshal()
+	b[3] |= 0x20
+	b[3] |= 0x40
+
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags"})
+}
+
+func TestUnmarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
+	f := PRIORITY{}
+	f.StreamIdentifier = 111
+	f.StreamDependency = 123
+	f.Flags.PRIORITY_DEPENDENCY = true
+	f.Flags.EXCLUSIVE = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, PRIORITY{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalPRIORITYWithPriorityGroup(t *testing.T) {
+	f := PRIORITY{}
+	f.StreamIdentifier = 111
+	f.PriorityGroupIdentifier = 555
+	f.Weight = 123
+	f.Flags.PRIORITY_GROUP = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, PRIORITY{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalPRIORITYWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
+	f := PRIORITY{}
+	b := f.Marshal()
+
+	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Priority frame must have stream identifier"})
+}
+
+func TestUnmarshalPRIORITYWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
+	f := PRIORITY{}
 	f.StreamIdentifier = 1
 	b := f.Marshal()
 	b[3] |= 0x20
