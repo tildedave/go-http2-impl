@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"encoding/binary"
+	"fmt"
 )
 
-var _ = fmt.Printf  // package fmt is now used
+var _ = fmt.Printf // package fmt is now used
 
 // base is used internally to marshal other types of frames
 type base struct {
@@ -18,8 +18,8 @@ type base struct {
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
 type DATA struct {
 	StreamIdentifier uint32
-	Data    string
-	Padding string
+	Data             string
+	Padding          string
 
 	Flags struct {
 		END_STREAM  bool
@@ -29,7 +29,7 @@ type DATA struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
 type HEADERS struct {
-	StreamIdentifier uint32
+	StreamIdentifier        uint32
 	PriorityGroupIdentifier uint32
 	Weight                  uint8
 	StreamDependency        uint32
@@ -46,11 +46,23 @@ type HEADERS struct {
 	}
 }
 
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.3
+type PRIORITY struct {
+	PriorityGroupIdentifier uint32
+	Weight                  uint8
+	StreamDependency        uint32
+	Flags                   struct {
+		PRIORITY_GROUP      bool
+		PRIORITY_DEPENDENCY bool
+		EXCLUSIVE           bool
+	}
+}
+
 const (
-	SETTINGS_HEADER_TABLE_SIZE = 1
-	SETTINGS_ENABLE_PUSH = 2
+	SETTINGS_HEADER_TABLE_SIZE      = 1
+	SETTINGS_ENABLE_PUSH            = 2
 	SETTINGS_MAX_CONCURRENT_STREAMS = 3
-	SETTINGS_INITIAL_WINDOW_SIZE = 4
+	SETTINGS_INITIAL_WINDOW_SIZE    = 4
 )
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#page-35
@@ -86,30 +98,29 @@ type Frame interface {
 }
 
 const (
-	NO_ERROR = 0
-	PROTOCOL_ERROR = 1
-	INTERNAL_ERROR = 2
-	FLOW_CONTROL_ERROR = 3
-	SETTINGS_TIMEOUT = 4
-	STREAM_CLOSED = 5
-	FRAME_SIZE_ERROR = 6
-	REFUSED_STREAM = 7
-	CANCEL = 8
-	COMPRESSION_ERROR = 9
-	CONNECT_ERROR = 10
-	ENHANCE_YOUR_CALM = 11
+	NO_ERROR            = 0
+	PROTOCOL_ERROR      = 1
+	INTERNAL_ERROR      = 2
+	FLOW_CONTROL_ERROR  = 3
+	SETTINGS_TIMEOUT    = 4
+	STREAM_CLOSED       = 5
+	FRAME_SIZE_ERROR    = 6
+	REFUSED_STREAM      = 7
+	CANCEL              = 8
+	COMPRESSION_ERROR   = 9
+	CONNECT_ERROR       = 10
+	ENHANCE_YOUR_CALM   = 11
 	INADEQUATE_SECURITY = 12
 )
 
 type ConnectionError struct {
-	Code uint8
+	Code    uint8
 	Message string
 }
 
 func (e ConnectionError) Error() string {
 	return fmt.Sprintf("ConnectionError: %s (%d)", e.Message, e.Code)
 }
-
 
 func (f base) Marshal() []byte {
 	header := make([]byte, 8)
@@ -254,7 +265,7 @@ func (f SETTINGS) Marshal() []byte {
 
 func Unmarshal(wire *[]byte) (Frame, error) {
 	// TODO: validation that all this is well formed.
-	payloadLen  := binary.BigEndian.Uint16([]byte{(*wire)[0] & 0x3F, (*wire)[1]})
+	payloadLen := binary.BigEndian.Uint16([]byte{(*wire)[0] & 0x3F, (*wire)[1]})
 	frameType := (*wire)[2]
 	frameFlags := (*wire)[3]
 	streamIdentifier := binary.BigEndian.Uint32([]byte{
@@ -314,7 +325,7 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 }
 
 func flagIsSet(flags uint8, mask uint8) bool {
-	return flags & mask == mask
+	return flags&mask == mask
 }
 
 func unmarshalPingPayload(frameFlags uint8, payload string) (Frame, error) {
@@ -464,7 +475,7 @@ func unmarshalSettingsPayload(frameFlags uint8, payload string) (Frame, error) {
 		}
 	}
 
-	for ; len(payload) > 0 ; {
+	for len(payload) > 0 {
 		if len(payload) < 5 {
 			return nil, ConnectionError{
 				FRAME_SIZE_ERROR,
