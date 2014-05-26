@@ -22,40 +22,37 @@ type DATA struct {
 	Padding  string
 
 	Flags struct {
-		END_STREAM  bool
-		END_SEGMENT bool
+		END_STREAM  bool // 0x1
+		END_SEGMENT bool // 0x2
+		COMPRESSED  bool // 0x20
 	}
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
 type HEADERS struct {
 	StreamId            uint32
-	PriorityGroupId     uint32
 	Weight              uint8
 	StreamDependency    uint32
 	HeaderBlockFragment string
 	Padding             string
 
 	Flags struct {
-		END_STREAM          bool
-		END_SEGMENT         bool
-		END_HEADERS         bool
-		PRIORITY_GROUP      bool
-		PRIORITY_DEPENDENCY bool
-		EXCLUSIVE           bool
+		END_STREAM          bool // 0x1
+		END_SEGMENT         bool // 0x2
+		END_HEADERS         bool // 0x4
+		PRIORITY_DEPENDENCY bool // 0x20
+		EXCLUSIVE           bool // First bit of StreamDependency
 	}
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.3
 type PRIORITY struct {
 	StreamId         uint32
-	PriorityGroupId  uint32
-	Weight           uint8
 	StreamDependency uint32
+	Weight           uint8
 	Flags            struct {
-		PRIORITY_GROUP      bool
 		PRIORITY_DEPENDENCY bool
-		EXCLUSIVE           bool
+		EXCLUSIVE           bool // First bit of StreamDependency
 	}
 }
 
@@ -71,7 +68,7 @@ type PUSH_PROMISE struct {
 	HeaderBlockFragment string
 	Padding             string
 	Flags               struct {
-		END_HEADERS bool
+		END_HEADERS bool // 0x4
 	}
 }
 
@@ -91,7 +88,7 @@ type Parameter struct {
 type SETTINGS struct {
 	Parameters []Parameter
 	Flags      struct {
-		ACK bool
+		ACK bool // 0x1
 	}
 }
 
@@ -99,7 +96,7 @@ type SETTINGS struct {
 type PING struct {
 	OpaqueData uint64
 	Flags      struct {
-		ACK bool
+		ACK bool // 0x1
 	}
 }
 
@@ -122,11 +119,16 @@ type CONTINUATION struct {
 	HeaderBlockFragment string
 	Padding             string
 	Flags               struct {
-		END_HEADERS bool
+		END_HEADERS bool // 0x4
 	}
 }
 
 // TODO: ALTSVC frame
+
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.12
+type BLOCKED struct {
+	StreamId uint32
+}
 
 type Frame interface {
 	Marshal() []byte
@@ -233,6 +235,9 @@ func (f DATA) Marshal() []byte {
 	if f.Flags.END_SEGMENT {
 		b.Flags |= 0x02
 	}
+	if f.Flags.COMPRESSED {
+		b.Flags |= 0x20
+	}
 
 	return b.Marshal()
 }
@@ -243,20 +248,14 @@ func (f HEADERS) Marshal() []byte {
 	b.StreamId = f.StreamId
 
 	flagHeaders := make([]byte, 0, 5)
-	if f.Flags.PRIORITY_GROUP {
+	if f.Flags.PRIORITY_DEPENDENCY {
 		flagHeaders = flagHeaders[0:5]
-		binary.BigEndian.PutUint32(flagHeaders, f.PriorityGroupId)
-		flagHeaders[0] |= 0x80
-		flagHeaders[4] = f.Weight
-		b.Flags |= 0x20
-
-	} else if f.Flags.PRIORITY_DEPENDENCY {
-		flagHeaders = flagHeaders[0:4]
 		binary.BigEndian.PutUint32(flagHeaders, f.StreamDependency)
+		flagHeaders[4] = f.Weight
+
 		if f.Flags.EXCLUSIVE {
 			flagHeaders[0] |= 0x80
 		}
-
 		b.Flags |= 0x40
 	}
 
@@ -288,16 +287,13 @@ func (f PRIORITY) Marshal() []byte {
 	var payload []byte
 	if f.Flags.PRIORITY_DEPENDENCY {
 		b.Flags |= 0x40
-		payload = make([]byte, 4)
+		payload = make([]byte, 5)
 		binary.BigEndian.PutUint32(payload, f.StreamDependency)
+		payload[4] = f.Weight
+
 		if f.Flags.EXCLUSIVE {
 			payload[0] |= 0x80
 		}
-	} else if f.Flags.PRIORITY_GROUP {
-		b.Flags |= 0x20
-		payload = make([]byte, 5)
-		binary.BigEndian.PutUint32(payload, f.PriorityGroupId)
-		payload[4] = f.Weight
 	}
 	b.Payload = string(payload)
 
@@ -382,6 +378,14 @@ func (f CONTINUATION) Marshal() []byte {
 	copy(payload[len(f.HeaderBlockFragment):], f.Padding)
 
 	b.Payload = string(append(headers, payload...))
+
+	return b.Marshal()
+}
+
+func (f BLOCKED) Marshal() []byte {
+	b := base{}
+	b.Type = 0xB
+	b.StreamId = f.StreamId
 
 	return b.Marshal()
 }
@@ -473,6 +477,14 @@ func Unmarshal(wire []byte) (advance int, f Frame, err error) {
 			}
 		}
 		f, err = unmarshalContinuationPayload(frameFlags, streamId, toDecode)
+	case 0xB:
+		if payloadLen != 0 {
+			return advance, nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"BLOCKED frame must have length of 0",
+			}
+		}
+		f = BLOCKED{StreamId: streamId}
 	}
 
 	if err != nil {
@@ -530,6 +542,9 @@ func unmarshalDataPayload(frameFlags uint8, streamId uint32, payload string) (Fr
 	if flagIsSet(frameFlags, 0x2) {
 		f.Flags.END_SEGMENT = true
 	}
+	if flagIsSet(frameFlags, 0x20) {
+		f.Flags.COMPRESSED = true
+	}
 	paddingLength, err := decodePaddingLength(frameFlags, &payload)
 	if err != nil {
 		return nil, err
@@ -573,28 +588,15 @@ func unmarshalHeadersPayload(frameFlags uint8, streamId uint32, payload string) 
 	if flagIsSet(frameFlags, 0x4) {
 		f.Flags.END_HEADERS = true
 	}
-	if flagIsSet(frameFlags, 0x20) && flagIsSet(frameFlags, 0x40) {
-		return nil, ConnectionError{
-			PROTOCOL_ERROR,
-			"Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags",
-		}
-	}
-	if flagIsSet(frameFlags, 0x20) {
-		// Priority group fields (priority group identifier and weight) are
-		// present
-		f.PriorityGroupId = uint31(payload[0:4])
-		f.Weight = payload[4]
-		f.Flags.PRIORITY_GROUP = true
-		payload = payload[5:]
-	}
 	if flagIsSet(frameFlags, 0x40) {
 		// Priority dependency fields are present
 		f.StreamDependency = uint31(payload[0:4])
+		f.Weight = payload[4]
 		f.Flags.PRIORITY_DEPENDENCY = true
 		if flagIsSet(payload[0], 0x80) {
 			f.Flags.EXCLUSIVE = true
 		}
-		payload = payload[4:]
+		payload = payload[5:]
 	}
 
 	payloadLength := uint16(len(payload)) - paddingLength
@@ -609,20 +611,10 @@ func unmarshalPriorityPayload(frameFlags uint8, streamId uint32, payload string)
 	f := PRIORITY{}
 	f.StreamId = streamId
 
-	if flagIsSet(frameFlags, 0x20) && flagIsSet(frameFlags, 0x40) {
-		return nil, ConnectionError{
-			PROTOCOL_ERROR,
-			"Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags",
-		}
-	}
-	if flagIsSet(frameFlags, 0x20) {
-		f.Flags.PRIORITY_GROUP = true
-		f.PriorityGroupId = uint31(payload[0:4])
-		f.Weight = uint8(payload[4])
-	}
 	if flagIsSet(frameFlags, 0x40) {
 		f.Flags.PRIORITY_DEPENDENCY = true
 		f.StreamDependency = uint31(payload[0:4])
+		f.Weight = uint8(payload[4])
 		if flagIsSet(payload[0], 0x80) {
 			f.Flags.EXCLUSIVE = true
 		}
