@@ -360,6 +360,61 @@ func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
 		"Headers frame should have end headers flag set")
 }
 
+func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
+	f := PRIORITY{}
+	f.Flags.PRIORITY_DEPENDENCY = true
+	f.StreamDependency = 123456
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameType(marshalled), uint8(0x2),
+		"Expected frame type of priority to be 0x2")
+	assert.Equal(t, frameFlags(marshalled)&0x40, uint8(0x40),
+		"Headers frame should have had priority group set")
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]), f.StreamDependency,
+		"Stream dependency was not correct in the payload")
+}
+
+func TestMarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
+	f := PRIORITY{}
+	f.Flags.PRIORITY_DEPENDENCY = true
+	f.StreamDependency = 123456
+	f.Flags.EXCLUSIVE = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameType(marshalled), uint8(0x2),
+		"Expected frame type of priority to be 0x2")
+	assert.Equal(t, frameFlags(marshalled)&0x40, uint8(0x40),
+		"Headers frame should have had priority group set")
+
+	dependency := binary.BigEndian.Uint32([]byte{
+		marshalled[8] & 0x7F,
+		marshalled[9],
+		marshalled[10],
+		marshalled[11],
+	})
+	assert.Equal(t, dependency, f.StreamDependency,
+		"Stream dependency was not correct in the payload")
+	assert.Equal(t, marshalled[8]&0x80, uint8(0x80))
+}
+
+func TestMarshalPRIORITYWithPriorityGroup(t *testing.T) {
+	f := PRIORITY{}
+	f.Flags.PRIORITY_GROUP = true
+	f.PriorityGroupIdentifier = 912742
+	f.Weight = 111
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameType(marshalled), uint8(0x2),
+		"Expected frame type of priority to be 0x2")
+	assert.Equal(t, frameFlags(marshalled)&0x20, uint8(0x20),
+		"Headers frame should have had priority group set")
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]),
+		f.PriorityGroupIdentifier,
+		"Priority Group Identifier was not correct in the payload")
+	assert.Equal(t, marshalled[12], f.Weight,
+		"Weight was not correct in the payload")
+}
+
 func TestMarshalSETTINGS(t *testing.T) {
 	f := SETTINGS{}
 	f.Parameters = []Parameter{{uint8(1), uint32(1298431729)},

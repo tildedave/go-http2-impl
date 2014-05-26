@@ -245,6 +245,28 @@ func (f HEADERS) Marshal() []byte {
 	return b.Marshal()
 }
 
+func (f PRIORITY) Marshal() []byte {
+	b := base{}
+	b.Type = 0x2
+	var payload []byte
+	if f.Flags.PRIORITY_DEPENDENCY {
+		b.Flags |= 0x40
+		payload = make([]byte, 4)
+		binary.BigEndian.PutUint32(payload, f.StreamDependency)
+		if f.Flags.EXCLUSIVE {
+			payload[0] |= 0x80
+		}
+	} else if f.Flags.PRIORITY_GROUP {
+		b.Flags |= 0x20
+		payload = make([]byte, 5)
+		binary.BigEndian.PutUint32(payload, f.PriorityGroupIdentifier)
+		payload[4] = f.Weight
+	}
+	b.Payload = string(payload)
+
+	return b.Marshal()
+}
+
 func (f SETTINGS) Marshal() []byte {
 	b := base{}
 	b.Type = 0x4
