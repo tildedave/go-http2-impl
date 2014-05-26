@@ -22,8 +22,9 @@ type DATA struct {
 	Padding  string
 
 	Flags struct {
-		END_STREAM  bool
-		END_SEGMENT bool
+		END_STREAM  bool // 0x1
+		END_SEGMENT bool // 0x2
+		COMPRESSED  bool // 0x20
 	}
 }
 
@@ -37,12 +38,12 @@ type HEADERS struct {
 	Padding             string
 
 	Flags struct {
-		END_STREAM          bool
-		END_SEGMENT         bool
-		END_HEADERS         bool
+		END_STREAM          bool // 0x1
+		END_SEGMENT         bool // 0x2
+		END_HEADERS         bool // 0x4
 		PRIORITY_GROUP      bool
-		PRIORITY_DEPENDENCY bool
-		EXCLUSIVE           bool
+		PRIORITY_DEPENDENCY bool // 0x20
+		EXCLUSIVE           bool // First bit of StreamDependency
 	}
 }
 
@@ -55,7 +56,7 @@ type PRIORITY struct {
 	Flags            struct {
 		PRIORITY_GROUP      bool
 		PRIORITY_DEPENDENCY bool
-		EXCLUSIVE           bool
+		EXCLUSIVE           bool // First bit of StreamDependency
 	}
 }
 
@@ -71,7 +72,7 @@ type PUSH_PROMISE struct {
 	HeaderBlockFragment string
 	Padding             string
 	Flags               struct {
-		END_HEADERS bool
+		END_HEADERS bool // 0x4
 	}
 }
 
@@ -91,7 +92,7 @@ type Parameter struct {
 type SETTINGS struct {
 	Parameters []Parameter
 	Flags      struct {
-		ACK bool
+		ACK bool // 0x1
 	}
 }
 
@@ -99,7 +100,7 @@ type SETTINGS struct {
 type PING struct {
 	OpaqueData uint64
 	Flags      struct {
-		ACK bool
+		ACK bool // 0x1
 	}
 }
 
@@ -122,7 +123,7 @@ type CONTINUATION struct {
 	HeaderBlockFragment string
 	Padding             string
 	Flags               struct {
-		END_HEADERS bool
+		END_HEADERS bool // 0x4
 	}
 }
 
@@ -232,6 +233,9 @@ func (f DATA) Marshal() []byte {
 	}
 	if f.Flags.END_SEGMENT {
 		b.Flags |= 0x02
+	}
+	if f.Flags.COMPRESSED {
+		b.Flags |= 0x20
 	}
 
 	return b.Marshal()
@@ -529,6 +533,9 @@ func unmarshalDataPayload(frameFlags uint8, streamId uint32, payload string) (Fr
 	}
 	if flagIsSet(frameFlags, 0x2) {
 		f.Flags.END_SEGMENT = true
+	}
+	if flagIsSet(frameFlags, 0x20) {
+		f.Flags.COMPRESSED = true
 	}
 	paddingLength, err := decodePaddingLength(frameFlags, &payload)
 	if err != nil {

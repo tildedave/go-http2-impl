@@ -185,6 +185,15 @@ func TestMarshalDATA_WithEndSegmentFlag(t *testing.T) {
 		"Data frame should have end segment flag set")
 }
 
+func TestMarshalDATA_WithCompressedFlag(t *testing.T) {
+	f := DATA{}
+	f.Flags.COMPRESSED = true
+
+	marshalled := f.Marshal()
+	assert.Equal(t, frameFlags(marshalled)&0x20, uint8(0x20),
+		"Data frame should have compressed flag set")
+}
+
 func TestMarshalDATA_WithSmallAmountOfPadding(t *testing.T) {
 	f := DATA{}
 	f.Data = "This is the data associated with the frame"
@@ -602,6 +611,18 @@ func TestUnmarshalDATA_WithEndSegment(t *testing.T) {
 	assert.Nil(t, err)
 	assert.IsType(t, DATA{}, uf)
 	assert.True(t, uf.(DATA).Flags.END_SEGMENT)
+}
+
+func TestUnmarshalDATA_WithCompressed(t *testing.T) {
+	f := DATA{StreamId: 123}
+	f.Flags.COMPRESSED = true
+
+	b := f.Marshal()
+	_, uf, err := Unmarshal(b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, DATA{}, uf)
+	assert.True(t, uf.(DATA).Flags.COMPRESSED)
 }
 
 func assertUnmarshalError(t *testing.T, b []byte, expectedError error) {
