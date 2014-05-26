@@ -119,6 +119,22 @@ func TestFrameScanner_TwoFrames(t *testing.T) {
 	assert.False(t, s.Scan())
 }
 
+func TestFrameScanner_TwoFramesCombined(t *testing.T) {
+	conn := NewMockConn()
+	b1 := PING{OpaqueData: 3957102}.Marshal()
+	b2 := PING{OpaqueData: 12311}.Marshal()
+
+	conn.readData = [][]byte{append(b1, b2...)}
+
+	s := NewFrameScanner(conn)
+
+	assert.True(t, s.Scan())
+	assert.Equal(t, s.Bytes(), b1)
+	assert.True(t, s.Scan())
+	assert.Equal(t, s.Bytes(), b2)
+	assert.False(t, s.Scan())
+}
+
 func TestFrameScanner_TwoFrames_Uneven(t *testing.T) {
 	conn := NewMockConn()
 	b1 := PING{OpaqueData: 3957102}.Marshal()
