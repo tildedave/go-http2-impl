@@ -98,6 +98,21 @@ func TestMarshalGOAWAY_WithDebugInfoSetsLength(t *testing.T) {
 		"Length should included the additional debug data")
 }
 
+func TestMarshalWINDOW_UPDATE(t *testing.T) {
+	f := WINDOW_UPDATE{}
+	f.WindowSizeIncrement = 124789
+	f.StreamId = 12344
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), uint8(0x8),
+		"Type should have been marshalled as 0x8")
+	assert.Equal(t, frameFlags(marshalled), uint8(0),
+		"Should have set no flags")
+	assert.Equal(t, frameLength(marshalled), uint16(4),
+		"Length should have been 4 octets")
+}
+
 func TestMarshalPING(t *testing.T) {
 	f := PING{}
 	f.OpaqueData = 219748174981749872
@@ -861,6 +876,19 @@ func TestUnmarshalPUSH_PROMISE_NoStreamId(t *testing.T) {
 	f := PUSH_PROMISE{}
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "PUSH_PROMISE frame must have stream identifier"})
+}
+
+func TestUnmarshalWINDOW_UPDATE(t *testing.T) {
+	f := WINDOW_UPDATE{}
+	f.StreamId = 12334
+	f.WindowSizeIncrement = 4096
+
+	b := f.Marshal()
+	_, uf, err := Unmarshal(b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, WINDOW_UPDATE{}, uf)
+	assert.Equal(t, f, uf)
 }
 
 func TestUnmarshalCONTINUATION(t *testing.T) {

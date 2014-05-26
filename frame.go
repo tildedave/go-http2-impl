@@ -110,7 +110,11 @@ type GOAWAY struct {
 	AdditionalDebugData string
 }
 
-// TODO: WINDOW_UPDATE frame
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.9
+type WINDOW_UPDATE struct {
+	StreamId            uint32
+	WindowSizeIncrement uint32
+}
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.10
 type CONTINUATION struct {
@@ -350,6 +354,19 @@ func (f PUSH_PROMISE) Marshal() []byte {
 	return b.Marshal()
 }
 
+func (f WINDOW_UPDATE) Marshal() []byte {
+	b := base{}
+	b.Type = 0x8
+	b.StreamId = f.StreamId
+
+	payload := make([]byte, 4)
+	binary.BigEndian.PutUint32(payload, f.WindowSizeIncrement&0x7FFFFFFF)
+
+	b.Payload = string(payload)
+
+	return b.Marshal()
+}
+
 func (f CONTINUATION) Marshal() []byte {
 	b := base{}
 	b.Type = 0x9
@@ -377,12 +394,8 @@ func Unmarshal(wire []byte) (advance int, f Frame, err error) {
 	payloadLen := binary.BigEndian.Uint16([]byte{wire[0] & 0x3F, wire[1]})
 	frameType := wire[2]
 	frameFlags := wire[3]
-	streamId := binary.BigEndian.Uint32([]byte{
-		wire[4] & 0x7F,
-		wire[5],
-		wire[6],
-		wire[7],
-	})
+	streamId := uint31(string(wire[4:8]))
+
 	if uint16(len(wire)) < payloadLen+8 {
 		// Incomplete payload
 		return 0, nil, nil
@@ -450,6 +463,8 @@ func Unmarshal(wire []byte) (advance int, f Frame, err error) {
 		f, err = unmarshalPingPayload(frameFlags, toDecode)
 	case 0x7:
 		f, err = unmarshalGoAwayPayload(toDecode)
+	case 0x8:
+		f, err = unmarshalWindowUpdatePayload(streamId, toDecode)
 	case 0x9:
 		if streamId == 0 {
 			return advance, nil, ConnectionError{
@@ -531,12 +546,7 @@ func unmarshalDataPayload(frameFlags uint8, streamId uint32, payload string) (Fr
 }
 
 func unmarshalGoAwayPayload(payload string) (Frame, error) {
-	lastStreamId := binary.BigEndian.Uint32([]byte{
-		payload[0] & 0x7F,
-		payload[1],
-		payload[2],
-		payload[3],
-	})
+	lastStreamId := uint31(payload[0:4])
 
 	return GOAWAY{
 		LastStreamId:        lastStreamId,
@@ -572,24 +582,14 @@ func unmarshalHeadersPayload(frameFlags uint8, streamId uint32, payload string) 
 	if flagIsSet(frameFlags, 0x20) {
 		// Priority group fields (priority group identifier and weight) are
 		// present
-		f.PriorityGroupId = binary.BigEndian.Uint32([]byte{
-			payload[0] & 0x7F,
-			payload[1],
-			payload[2],
-			payload[3],
-		})
+		f.PriorityGroupId = uint31(payload[0:4])
 		f.Weight = payload[4]
 		f.Flags.PRIORITY_GROUP = true
 		payload = payload[5:]
 	}
 	if flagIsSet(frameFlags, 0x40) {
 		// Priority dependency fields are present
-		f.StreamDependency = binary.BigEndian.Uint32([]byte{
-			payload[0] & 0x7F,
-			payload[1],
-			payload[2],
-			payload[3],
-		})
+		f.StreamDependency = uint31(payload[0:4])
 		f.Flags.PRIORITY_DEPENDENCY = true
 		if flagIsSet(payload[0], 0x80) {
 			f.Flags.EXCLUSIVE = true
@@ -617,22 +617,12 @@ func unmarshalPriorityPayload(frameFlags uint8, streamId uint32, payload string)
 	}
 	if flagIsSet(frameFlags, 0x20) {
 		f.Flags.PRIORITY_GROUP = true
-		f.PriorityGroupId = binary.BigEndian.Uint32([]byte{
-			payload[0] & 0x7F,
-			payload[1],
-			payload[2],
-			payload[3],
-		})
+		f.PriorityGroupId = uint31(payload[0:4])
 		f.Weight = uint8(payload[4])
 	}
 	if flagIsSet(frameFlags, 0x40) {
 		f.Flags.PRIORITY_DEPENDENCY = true
-		f.StreamDependency = binary.BigEndian.Uint32([]byte{
-			payload[0] & 0x7F,
-			payload[1],
-			payload[2],
-			payload[3],
-		})
+		f.StreamDependency = uint31(payload[0:4])
 		if flagIsSet(payload[0], 0x80) {
 			f.Flags.EXCLUSIVE = true
 		}
@@ -696,16 +686,19 @@ func unmarshalPushPromisePayload(frameFlags uint8, streamId uint32, payload stri
 		return nil, err
 	}
 
-	f.PromisedStreamId = binary.BigEndian.Uint32([]byte{
-		payload[0] & 0x7F,
-		payload[1],
-		payload[2],
-		payload[3],
-	})
+	f.PromisedStreamId = uint31(payload[0:4])
 	payload = payload[4:]
 	headerBlockLength := uint16(len(payload)) - paddingLength
 	f.HeaderBlockFragment = payload[0:headerBlockLength]
 	f.Padding = payload[headerBlockLength:]
+
+	return f, nil
+}
+
+func unmarshalWindowUpdatePayload(streamId uint32, payload string) (Frame, error) {
+	f := WINDOW_UPDATE{}
+	f.StreamId = streamId
+	f.WindowSizeIncrement = uint31(payload)
 
 	return f, nil
 }
@@ -727,4 +720,13 @@ func unmarshalContinuationPayload(frameFlags uint8, streamId uint32, payload str
 	f.Padding = payload[headerBlockLength:]
 
 	return f, nil
+}
+
+func uint31(payload string) uint32 {
+	return binary.BigEndian.Uint32([]byte{
+		payload[0] & 0x7F,
+		payload[1],
+		payload[2],
+		payload[3],
+	})
 }
