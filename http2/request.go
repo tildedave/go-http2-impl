@@ -13,7 +13,7 @@ type Request struct {
 	Conn   Conn
 }
 
-func (r *Request) Write(w io.Writer) {
+func (r *Request) Write() {
 	// TODO
 }
 

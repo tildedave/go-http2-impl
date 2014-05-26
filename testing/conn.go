@@ -1,7 +1,6 @@
 package testing
 
 import (
-	"github.com/tildedave/go-http2-impl/http2"
 	"net"
 	"time"
 )
@@ -58,11 +57,4 @@ func NewFakeConn() *FakeConn {
 	conn.Written = make([]byte, 0)
 
 	return conn
-}
-
-func NewTestConn() (http2.Conn, *FakeConn) {
-	ioc := NewFakeConn()
-	conn := http2.NewConn(ioc)
-
-	return conn, ioc
 }

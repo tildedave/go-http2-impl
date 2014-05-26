@@ -3,14 +3,22 @@ package main
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/tildedave/go-http2-impl/http2"
 	http2test "github.com/tildedave/go-http2-impl/testing"
 	"testing"
 )
 
 var _ = fmt.Printf // package fmt is now used
 
+func NewTestConn() (http2.Conn, *http2test.FakeConn) {
+	ioc := http2test.NewFakeConn()
+	conn := http2.NewConn(ioc)
+
+	return conn, ioc
+}
+
 func TestServeWithoutPreface(t *testing.T) {
-	conn, fakeConn := http2test.NewTestConn()
+	conn, fakeConn := NewTestConn()
 
 	f := GOAWAY{0, 1, "Did not include connection preface"}
 	bytes := f.Marshal()
@@ -23,7 +31,7 @@ func TestServeWithoutPreface(t *testing.T) {
 }
 
 func TestServeWithThePreface(t *testing.T) {
-	conn, fakeConn := http2test.NewTestConn()
+	conn, fakeConn := NewTestConn()
 
 	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
@@ -35,7 +43,7 @@ func TestServeWithThePreface(t *testing.T) {
 }
 
 func TestServeWithThePrefaceSendsSettingsFrame(t *testing.T) {
-	conn, fakeConn := http2test.NewTestConn()
+	conn, fakeConn := NewTestConn()
 
 	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 	settingsFrame := SETTINGS{}
