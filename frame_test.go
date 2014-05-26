@@ -29,7 +29,7 @@ func TestMarshalEmptyFrame(t *testing.T) {
 		"Length should have been nothing")
 }
 
-func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
+func TestMarshalFrame_WithPayloadIncludesLength(t *testing.T) {
 	f := base{}
 	f.Payload = "this is the payload of the frame"
 
@@ -40,7 +40,7 @@ func TestMarshalFrameWithPayloadIncludesLength(t *testing.T) {
 		"Length field in header should have been the length of payload")
 }
 
-func TestMarshalFrameWithType(t *testing.T) {
+func TestMarshalFrame_WithType(t *testing.T) {
 	f := base{}
 	f.Type = uint8(8)
 
@@ -48,7 +48,7 @@ func TestMarshalFrameWithType(t *testing.T) {
 		"Type should have been marshalled as the third octet")
 }
 
-func TestMarshalFrameWithFlags(t *testing.T) {
+func TestMarshalFrame_WithFlags(t *testing.T) {
 	f := base{}
 	f.Flags = uint8(0xD)
 
@@ -56,7 +56,7 @@ func TestMarshalFrameWithFlags(t *testing.T) {
 		"Flags should have been marshalled as the fourth octet")
 }
 
-func TestMarshalFrameWithStreamId(t *testing.T) {
+func TestMarshalFrame_WithStreamId(t *testing.T) {
 	f := base{}
 	f.StreamId = 168036609
 
@@ -87,7 +87,7 @@ func TestMarshalGOAWAY(t *testing.T) {
 		"Marshalled frame should have included last stream id")
 }
 
-func TestMarshalGOAWAYWithDebugInfoSetsLength(t *testing.T) {
+func TestMarshalGOAWAY_WithDebugInfoSetsLength(t *testing.T) {
 	f := GOAWAY{}
 	f.AdditionalDebugData = "This is some additional debug info to help you"
 
@@ -134,7 +134,7 @@ func TestMarshalPINGDoesNotIncludeAckIfUnset(t *testing.T) {
 		"Ping frame without ACK flag should not have had 0x1 flag bit set")
 }
 
-func TestMarshalDATAWithoutPadding(t *testing.T) {
+func TestMarshalDATA_WithoutPadding(t *testing.T) {
 	f := DATA{}
 	f.Data = "This is the data associated with the data frame"
 
@@ -152,7 +152,7 @@ func TestMarshalDATAWithoutPadding(t *testing.T) {
 	assert.Equal(t, []byte(f.Data), marshalled[8:], "Data did not match")
 }
 
-func TestMarshalDATAWithEndStreamFlag(t *testing.T) {
+func TestMarshalDATA_WithEndStreamFlag(t *testing.T) {
 	f := DATA{}
 	f.Flags.END_STREAM = true
 
@@ -161,7 +161,7 @@ func TestMarshalDATAWithEndStreamFlag(t *testing.T) {
 		"Data frame should have end stream flag set")
 }
 
-func TestMarshalDATAWithEndSegmentFlag(t *testing.T) {
+func TestMarshalDATA_WithEndSegmentFlag(t *testing.T) {
 	f := DATA{}
 	f.Flags.END_SEGMENT = true
 
@@ -170,7 +170,7 @@ func TestMarshalDATAWithEndSegmentFlag(t *testing.T) {
 		"Data frame should have end segment flag set")
 }
 
-func TestMarshalDATAWithSmallAmountOfPadding(t *testing.T) {
+func TestMarshalDATA_WithSmallAmountOfPadding(t *testing.T) {
 	f := DATA{}
 	f.Data = "This is the data associated with the frame"
 	f.Padding = "This padding is less than 256 bytes"
@@ -191,7 +191,7 @@ func TestMarshalDATAWithSmallAmountOfPadding(t *testing.T) {
 		"Padding did not match")
 }
 
-func TestMarshalDATAWithPaddingHighSet(t *testing.T) {
+func TestMarshalDATA_WithPaddingHighSet(t *testing.T) {
 	f := DATA{}
 	f.Data = "This is the data associated with the data frame"
 
@@ -230,7 +230,7 @@ func TestMarshalHEADERS(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalHEADERSWithPriorityGroup(t *testing.T) {
+func TestMarshalHEADERS_WithPriorityGroup(t *testing.T) {
 	f := HEADERS{}
 	f.PriorityGroupId = 21984080
 	f.Weight = 123
@@ -257,7 +257,7 @@ func TestMarshalHEADERSWithPriorityGroup(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalHEADERSWithPriorityDependency(t *testing.T) {
+func TestMarshalHEADERS_WithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
 	f.StreamDependency = 39781097
 	f.Flags.PRIORITY_DEPENDENCY = true
@@ -282,7 +282,7 @@ func TestMarshalHEADERSWithPriorityDependency(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalHEADERSWithSmallAmountOfPadding(t *testing.T) {
+func TestMarshalHEADERS_WithSmallAmountOfPadding(t *testing.T) {
 	f := HEADERS{}
 	f.HeaderBlockFragment = "content-type:application/json"
 	f.Padding = "This is less than 256 padding"
@@ -305,7 +305,7 @@ func TestMarshalHEADERSWithSmallAmountOfPadding(t *testing.T) {
 		"Padding should have matched")
 }
 
-func TestMarshalHEADERSWithPaddingHighSet(t *testing.T) {
+func TestMarshalHEADERS_WithPaddingHighSet(t *testing.T) {
 	f := HEADERS{}
 	f.HeaderBlockFragment = "content-type:application/json"
 
@@ -333,7 +333,7 @@ func TestMarshalHEADERSWithPaddingHighSet(t *testing.T) {
 		"Padding should have matched")
 }
 
-func TestMarshalHEADERSWithEndStreamFlag(t *testing.T) {
+func TestMarshalHEADERS_WithEndStreamFlag(t *testing.T) {
 	f := HEADERS{}
 	f.Flags.END_STREAM = true
 
@@ -342,7 +342,7 @@ func TestMarshalHEADERSWithEndStreamFlag(t *testing.T) {
 		"Headers frame should have end stream flag set")
 }
 
-func TestMarshalHEADERSWithEndSegmentFlag(t *testing.T) {
+func TestMarshalHEADERS_WithEndSegmentFlag(t *testing.T) {
 	f := HEADERS{}
 	f.Flags.END_SEGMENT = true
 
@@ -351,7 +351,7 @@ func TestMarshalHEADERSWithEndSegmentFlag(t *testing.T) {
 		"Headers frame should have end segment flag set")
 }
 
-func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
+func TestMarshalHEADERS_WithEndHeadersFlag(t *testing.T) {
 	f := HEADERS{}
 	f.Flags.END_HEADERS = true
 
@@ -360,7 +360,7 @@ func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
 		"Headers frame should have end headers flag set")
 }
 
-func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
+func TestMarshalPRIORITY_WithPriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.StreamId = 1111
@@ -377,7 +377,7 @@ func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
 		"Stream dependency was not correct in the payload")
 }
 
-func TestMarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
+func TestMarshalPRIORITY_WithExclusivePriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.StreamDependency = 123456
@@ -400,7 +400,7 @@ func TestMarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
 	assert.Equal(t, marshalled[8]&0x80, uint8(0x80))
 }
 
-func TestMarshalPRIORITYWithPriorityGroup(t *testing.T) {
+func TestMarshalPRIORITY_WithPriorityGroup(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_GROUP = true
 	f.PriorityGroupId = 912742
@@ -461,7 +461,7 @@ func TestMarshalSETTINGS(t *testing.T) {
 		"Expected second frame value to match")
 }
 
-func TestMarshalSETTINGSWithACKFlag(t *testing.T) {
+func TestMarshalSETTINGS_WithACKFlag(t *testing.T) {
 	f := SETTINGS{}
 	f.Flags.ACK = true
 
@@ -491,7 +491,7 @@ func TestMarshalPUSH_PROMISE(t *testing.T) {
 	assert.Equal(t, string(marshalled[13:13+len(f.HeaderBlockFragment)]), f.HeaderBlockFragment)
 	assert.Equal(t, string(marshalled[13+len(f.HeaderBlockFragment):]), f.Padding)
 }
-func TestMarshalPUSH_PROMISEWithEndHeadersFlag(t *testing.T) {
+func TestMarshalPUSH_PROMISE_WithEndHeadersFlag(t *testing.T) {
 	f := PUSH_PROMISE{}
 	f.StreamId = 123
 	f.Flags.END_HEADERS = true
@@ -501,7 +501,37 @@ func TestMarshalPUSH_PROMISEWithEndHeadersFlag(t *testing.T) {
 		"END_HEADERS flag should have been set")
 }
 
-func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
+func TestMarshalCONTINUATION(t *testing.T) {
+	f := CONTINUATION{}
+	f.StreamId = 123
+	f.HeaderBlockFragment = "fragment of header block"
+	f.Padding = "aaaaaaaaaaaaa"
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), uint8(0x9),
+		"Expected frame type for push promise frame to be 0x9")
+	assert.Equal(t, frameFlags(marshalled)&0x8, uint8(0x8),
+		"PAD_LOW flag should have been set")
+	assert.Equal(t, frameFlags(marshalled)&0x10, uint8(0x0),
+		"PAD_HIGH flag should not have been set")
+	assert.Equal(t, marshalled[8], uint8(len(f.Padding)))
+	assert.Equal(t, string(marshalled[9:9+len(f.HeaderBlockFragment)]), f.HeaderBlockFragment)
+	assert.Equal(t, string(marshalled[9+len(f.HeaderBlockFragment):]), f.Padding)
+}
+
+func TestMarshalCONTINUATION_WithEndHeadersFlag(t *testing.T) {
+	f := CONTINUATION{}
+	f.StreamId = 123
+	f.Flags.END_HEADERS = true
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameFlags(marshalled)&0x4, uint8(0x4),
+		"END_HEADERS flag should have been set")
+}
+
+func TestUnmarshalDATA_WithSmallPadding(t *testing.T) {
 	f := DATA{
 		StreamId: 37,
 		Data:     "This is the data associated with the data frame",
@@ -516,7 +546,7 @@ func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
 	assert.Equal(t, len(b), 0)
 }
 
-func TestUnmarshalDATAWithLargePadding(t *testing.T) {
+func TestUnmarshalDATA_WithLargePadding(t *testing.T) {
 	f := DATA{
 		StreamId: 37,
 		Data:     "This is the data associated with the data frame",
@@ -536,7 +566,7 @@ func TestUnmarshalDATAWithLargePadding(t *testing.T) {
 	assert.Equal(t, len(b), 0)
 }
 
-func TestUnmarshalDATAWithEndStream(t *testing.T) {
+func TestUnmarshalDATA_WithEndStream(t *testing.T) {
 	f := DATA{StreamId: 123}
 	f.Flags.END_STREAM = true
 
@@ -548,7 +578,7 @@ func TestUnmarshalDATAWithEndStream(t *testing.T) {
 	assert.True(t, uf.(DATA).Flags.END_STREAM)
 }
 
-func TestUnmarshalDATAWithEndSegment(t *testing.T) {
+func TestUnmarshalDATA_WithEndSegment(t *testing.T) {
 	f := DATA{StreamId: 123}
 	f.Flags.END_SEGMENT = true
 
@@ -567,14 +597,14 @@ func assertUnmarshalError(t *testing.T, b []byte, expectedError error) {
 	assert.Equal(t, err, expectedError)
 }
 
-func TestUnmarshalDATAWithNoStreamIdIsAnError(t *testing.T) {
+func TestUnmarshalDATA_NoStreamId(t *testing.T) {
 	f := DATA{}
 	f.StreamId = 0
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "DATA frame must have stream identifier"})
 }
 
-func TestUnmarshalDATAWithIncompatiblePaddingFlagsIsAProtocolError(t *testing.T) {
+func TestUnmarshalDATA_IncompatiblePaddingFlags(t *testing.T) {
 	f := DATA{StreamId: 123, Data: "dagljkjagldka"}
 	b := f.Marshal()
 	b[3] = 0x10
@@ -594,7 +624,7 @@ func TestUnmarshalPING(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalPINGWithACK(t *testing.T) {
+func TestUnmarshalPING_WithACK(t *testing.T) {
 	f := PING{}
 	f.OpaqueData = 2198179
 	f.Flags.ACK = true
@@ -607,7 +637,7 @@ func TestUnmarshalPINGWithACK(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalPINGWithStreamIdIsProtocolError(t *testing.T) {
+func TestUnmarshalPING_WithStreamId(t *testing.T) {
 	f := PING{}
 	f.OpaqueData = 2198179
 
@@ -616,7 +646,7 @@ func TestUnmarshalPINGWithStreamIdIsProtocolError(t *testing.T) {
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "PING frame must not have stream identifier"})
 }
 
-func TestUnmarshalPINGWithBadLengthIsFrameSizeError(t *testing.T) {
+func TestUnmarshalPING_WithBadLength(t *testing.T) {
 	f := PING{}
 	f.OpaqueData = 2198179
 	b := f.Marshal()
@@ -654,7 +684,7 @@ func TestUnmarshalHEADERS(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
+func TestUnmarshalHEADERS_WithPriorityGroup(t *testing.T) {
 	f := HEADERS{}
 	f.StreamId = 2139480
 	f.PriorityGroupId = 21984080
@@ -670,7 +700,7 @@ func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
+func TestUnmarshalHEADERS_WithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
 	f.StreamId = 2139480
 	f.StreamDependency = 39781097
@@ -686,7 +716,7 @@ func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalHEADERSWithNoStreamIdIsAProtocolError(t *testing.T) {
+func TestUnmarshalHEADERS_WithNoStreamId(t *testing.T) {
 	f := HEADERS{}
 
 	b := f.Marshal()
@@ -694,7 +724,7 @@ func TestUnmarshalHEADERSWithNoStreamIdIsAProtocolError(t *testing.T) {
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "HEADERS frame must have stream identifier"})
 }
 
-func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
+func TestUnmarshalHEADERS_WithConflictingPriorityGroupAndDependencies(t *testing.T) {
 	f := HEADERS{}
 	f.StreamId = 1
 	b := f.Marshal()
@@ -704,7 +734,7 @@ func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolE
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags"})
 }
 
-func TestUnmarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
+func TestUnmarshalPRIORITY_WithExclusivePriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.StreamId = 111
 	f.StreamDependency = 123
@@ -719,7 +749,7 @@ func TestUnmarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalPRIORITYWithPriorityGroup(t *testing.T) {
+func TestUnmarshalPRIORITY_WithPriorityGroup(t *testing.T) {
 	f := PRIORITY{}
 	f.StreamId = 111
 	f.PriorityGroupId = 555
@@ -734,14 +764,14 @@ func TestUnmarshalPRIORITYWithPriorityGroup(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalPRIORITYWithNoStreamIdIsAProtocolError(t *testing.T) {
+func TestUnmarshalPRIORITY_WithNoStreamId(t *testing.T) {
 	f := PRIORITY{}
 	b := f.Marshal()
 
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "PRIORITY frame must have stream identifier"})
 }
 
-func TestUnmarshalPRIORITYWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
+func TestUnmarshalPRIORITY_WithConflictingFlags(t *testing.T) {
 	f := PRIORITY{}
 	f.StreamId = 1
 	b := f.Marshal()
@@ -764,7 +794,7 @@ func TestUnmarshalRST_STREAM(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalRST_STREAMWithNoStreamIdenfierIsAProtocolError(t *testing.T) {
+func TestUnmarshalRST_STREAM_WithNoStreamIdenfier(t *testing.T) {
 	f := RST_STREAM{}
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "RST_STREAM frame must have stream identifier"})
@@ -785,7 +815,7 @@ func TestUnmarshalSETTINGS(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalSETTINGSWithAck(t *testing.T) {
+func TestUnmarshalSETTINGS_WithAck(t *testing.T) {
 	f := SETTINGS{}
 	f.Flags.ACK = true
 
@@ -797,14 +827,14 @@ func TestUnmarshalSETTINGSWithAck(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalSETTINGSWithInvalidIdIsAnError(t *testing.T) {
+func TestUnmarshalSETTINGS_WithInvalidId(t *testing.T) {
 	f := SETTINGS{}
 	f.Parameters = []Parameter{{15, 512}}
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "Settings frame specified invalid identifier: 15"})
 }
 
-func TestUnmarshalSETTINGSWithAckAndPayloadIsAConnectionError(t *testing.T) {
+func TestUnmarshalSETTINGS_WithAckAndPayload(t *testing.T) {
 	f := SETTINGS{}
 	f.Parameters = []Parameter{{SETTINGS_HEADER_TABLE_SIZE, 512}}
 	f.Flags.ACK = true
@@ -826,4 +856,10 @@ func TestUnmarshalPUSH_PROMISE(t *testing.T) {
 	assert.Nil(t, err)
 	assert.IsType(t, PUSH_PROMISE{}, uf)
 	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalPUSH_PROMISE_NoStreamId(t *testing.T) {
+	f := PUSH_PROMISE{}
+
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "PUSH_PROMISE frame must have stream identifier"})
 }

@@ -110,6 +110,16 @@ type GOAWAY struct {
 	AdditionalDebugData string
 }
 
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.10
+type CONTINUATION struct {
+	StreamId            uint32
+	HeaderBlockFragment string
+	Padding             string
+	Flags               struct {
+		END_HEADERS bool
+	}
+}
+
 type Frame interface {
 	Marshal() []byte
 }
@@ -336,6 +346,23 @@ func (f PUSH_PROMISE) Marshal() []byte {
 	return b.Marshal()
 }
 
+func (f CONTINUATION) Marshal() []byte {
+	b := base{}
+	b.Type = 0x9
+	if f.Flags.END_HEADERS {
+		b.Flags |= 0x4
+	}
+
+	headers := paddingHeaders(&b, f.Padding)
+	payload := make([]byte, len(f.HeaderBlockFragment)+len(f.Padding))
+	copy(payload[0:len(f.HeaderBlockFragment)], f.HeaderBlockFragment)
+	copy(payload[len(f.HeaderBlockFragment):], f.Padding)
+
+	b.Payload = string(append(headers, payload...))
+
+	return b.Marshal()
+}
+
 func Unmarshal(wire *[]byte) (Frame, error) {
 	// TODO: validation that all this is well formed.
 	payloadLen := binary.BigEndian.Uint16([]byte{(*wire)[0] & 0x3F, (*wire)[1]})
@@ -390,6 +417,12 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 	case 0x4:
 		f, err = unmarshalSettingsPayload(frameFlags, toDecode)
 	case 0x5:
+		if streamId == 0 {
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"PUSH_PROMISE frame must have stream identifier",
+			}
+		}
 		f, err = unmarshalPushPromisePayload(frameFlags, streamId, toDecode)
 	case 0x6:
 		if streamId != 0 {
