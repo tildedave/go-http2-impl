@@ -110,6 +110,8 @@ type GOAWAY struct {
 	AdditionalDebugData string
 }
 
+// TODO: WINDOW_UPDATE frame
+
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.10
 type CONTINUATION struct {
 	StreamId            uint32
@@ -119,6 +121,8 @@ type CONTINUATION struct {
 		END_HEADERS bool
 	}
 }
+
+// TODO: ALTSVC frame
 
 type Frame interface {
 	Marshal() []byte
