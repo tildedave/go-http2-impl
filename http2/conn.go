@@ -16,6 +16,8 @@ type Conn interface {
 	Read(p []byte) (n int, err error)
 	Write(p []byte) (n int, err error)
 	Close() error
+	EncodeHeaderSet(hs hpack.HeaderSet) string
+	HuffmanEncodeHeaderSet(hs hpack.HeaderSet) string
 }
 
 func NewConn(ioc net.Conn) *conn {
@@ -35,4 +37,12 @@ func (c *conn) Write(p []byte) (n int, err error) {
 
 func (c *conn) Close() (err error) {
 	return c.ioc.Close()
+}
+
+func (c *conn) EncodeHeaderSet(hs hpack.HeaderSet) string {
+	return c.context.Encode(hs)
+}
+
+func (c *conn) HuffmanEncodeHeaderSet(hs hpack.HeaderSet) string {
+	return c.context.Encode(hs)
 }

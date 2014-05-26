@@ -1,10 +1,14 @@
 package http2
 
 import (
+	"fmt"
+	"github.com/tildedave/go-hpack-impl/hpack"
 	"io"
 	"io/ioutil"
 	"net/url"
 )
+
+var _ = fmt.Println // fmt is now used
 
 type Request struct {
 	Method string
@@ -14,7 +18,19 @@ type Request struct {
 }
 
 func (r *Request) Write() {
-	// TODO
+	hs := hpack.HeaderSet{[]hpack.HeaderField{
+		{":method", r.Method},
+		{":path", r.URL.Path},
+	}}
+	data := r.Conn.EncodeHeaderSet(hs)
+
+	h := HEADERS{}
+	h.HeaderBlockFragment = data
+	h.Flags.END_STREAM = true
+	h.Flags.END_HEADERS = true
+	h.StreamId = 23
+
+	r.Conn.Write(h.Marshal())
 }
 
 func NewRequest(method, urlStr string, body io.Reader, conn Conn) (*Request, error) {
