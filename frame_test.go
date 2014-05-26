@@ -56,15 +56,15 @@ func TestMarshalFrameWithFlags(t *testing.T) {
 		"Flags should have been marshalled as the fourth octet")
 }
 
-func TestMarshalFrameWithStreamIdentifier(t *testing.T) {
+func TestMarshalFrameWithStreamId(t *testing.T) {
 	f := base{}
-	f.StreamIdentifier = 168036609
+	f.StreamId = 168036609
 
 	marshalled := f.Marshal()
 
 	stream_identifier := binary.BigEndian.Uint32(marshalled[4:8]) & uint32(0x7FFFFFFF)
 
-	assert.Equal(t, stream_identifier, f.StreamIdentifier,
+	assert.Equal(t, stream_identifier, f.StreamId,
 		"Stream identifier should have been marshalled as fifth through eighth octets")
 }
 
@@ -232,7 +232,7 @@ func TestMarshalHEADERS(t *testing.T) {
 
 func TestMarshalHEADERSWithPriorityGroup(t *testing.T) {
 	f := HEADERS{}
-	f.PriorityGroupIdentifier = 21984080
+	f.PriorityGroupId = 21984080
 	f.Weight = 123
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 	f.Flags.PRIORITY_GROUP = true
@@ -247,7 +247,7 @@ func TestMarshalHEADERSWithPriorityGroup(t *testing.T) {
 
 	assert.Equal(t,
 		binary.BigEndian.Uint32(marshalled[8:12])^0x80000000,
-		f.PriorityGroupIdentifier,
+		f.PriorityGroupId,
 		"Priority group identifier did not match")
 
 	assert.Equal(t, marshalled[12], byte(f.Weight), "Weight did not match")
@@ -363,7 +363,7 @@ func TestMarshalHEADERSWithEndHeadersFlag(t *testing.T) {
 func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_DEPENDENCY = true
-	f.StreamIdentifier = 1111
+	f.StreamId = 1111
 	f.StreamDependency = 123456
 
 	marshalled := f.Marshal()
@@ -371,7 +371,7 @@ func TestMarshalPRIORITYWithPriorityDependency(t *testing.T) {
 		"Expected frame type of priority to be 0x2")
 	assert.Equal(t, frameFlags(marshalled)&0x40, uint8(0x40),
 		"Headers frame should have had priority group set")
-	assert.Equal(t, binary.BigEndian.Uint32(marshalled[4:8]), f.StreamIdentifier,
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[4:8]), f.StreamId,
 		"Stream identifier was not correct in the payload")
 	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]), f.StreamDependency,
 		"Stream dependency was not correct in the payload")
@@ -403,7 +403,7 @@ func TestMarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
 func TestMarshalPRIORITYWithPriorityGroup(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_GROUP = true
-	f.PriorityGroupIdentifier = 912742
+	f.PriorityGroupId = 912742
 	f.Weight = 111
 
 	marshalled := f.Marshal()
@@ -412,15 +412,15 @@ func TestMarshalPRIORITYWithPriorityGroup(t *testing.T) {
 	assert.Equal(t, frameFlags(marshalled)&0x20, uint8(0x20),
 		"Headers frame should have had priority group set")
 	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]),
-		f.PriorityGroupIdentifier,
-		"Priority Group Identifier was not correct in the payload")
+		f.PriorityGroupId,
+		"Priority Group Id was not correct in the payload")
 	assert.Equal(t, marshalled[12], f.Weight,
 		"Weight was not correct in the payload")
 }
 
 func TestMarshalRST_STREAM(t *testing.T) {
 	f := RST_STREAM{}
-	f.StreamIdentifier = 123
+	f.StreamId = 123
 	f.ErrorCode = 2
 
 	marshalled := f.Marshal()
@@ -429,7 +429,7 @@ func TestMarshalRST_STREAM(t *testing.T) {
 		"Expected frame type of settings to be 0x3")
 	assert.Equal(t, frameLength(marshalled), uint16(4),
 		"Expected frame length to be 4 octets")
-	assert.Equal(t, binary.BigEndian.Uint32(marshalled[4:8]), f.StreamIdentifier,
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[4:8]), f.StreamId,
 		"Expected stream identifier to match")
 	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]), f.ErrorCode,
 		"Expected error code to match")
@@ -448,13 +448,13 @@ func TestMarshalSETTINGS(t *testing.T) {
 		"Expected frame length to be 10 octets (two parameters)")
 
 	assert.Equal(t, marshalled[8],
-		f.Parameters[0].Identifier,
+		f.Parameters[0].Id,
 		"Expected first frame parameter to match")
 	assert.Equal(t, binary.BigEndian.Uint32(marshalled[9:13]),
 		f.Parameters[0].Value,
 		"Expected first frame value to match")
 	assert.Equal(t, marshalled[13],
-		f.Parameters[1].Identifier,
+		f.Parameters[1].Id,
 		"Expected second frame parameter to match")
 	assert.Equal(t, binary.BigEndian.Uint32(marshalled[14:18]),
 		f.Parameters[1].Value,
@@ -471,11 +471,41 @@ func TestMarshalSETTINGSWithACKFlag(t *testing.T) {
 		"Expected frame to have set ACK flag of 0x1")
 }
 
+func TestMarshalPUSH_PROMISE(t *testing.T) {
+	f := PUSH_PROMISE{}
+	f.StreamId = 123
+	f.PromisedStreamId = 456
+	f.HeaderBlockFragment = "fragment of header block"
+	f.Padding = "aaaaaaaaaaaaa"
+
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameType(marshalled), uint8(0x5),
+		"Expected frame type for push promise frame to be 0x5")
+	assert.Equal(t, frameFlags(marshalled)&0x8, uint8(0x8),
+		"PAD_LOW flag should have been set")
+	assert.Equal(t, frameFlags(marshalled)&0x10, uint8(0x0),
+		"PAD_HIGH flag should not have been set")
+	assert.Equal(t, marshalled[8], uint8(len(f.Padding)))
+	assert.Equal(t, binary.BigEndian.Uint32(marshalled[9:13]), f.PromisedStreamId)
+	assert.Equal(t, string(marshalled[13:13+len(f.HeaderBlockFragment)]), f.HeaderBlockFragment)
+	assert.Equal(t, string(marshalled[13+len(f.HeaderBlockFragment):]), f.Padding)
+}
+func TestMarshalPUSH_PROMISEWithEndHeadersFlag(t *testing.T) {
+	f := PUSH_PROMISE{}
+	f.StreamId = 123
+	f.Flags.END_HEADERS = true
+	marshalled := f.Marshal()
+
+	assert.Equal(t, frameFlags(marshalled)&0x4, uint8(0x4),
+		"END_HEADERS flag should have been set")
+}
+
 func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
 	f := DATA{
-		StreamIdentifier: 37,
-		Data:             "This is the data associated with the data frame",
-		Padding:          "This padding is less than 256 bytes",
+		StreamId: 37,
+		Data:     "This is the data associated with the data frame",
+		Padding:  "This padding is less than 256 bytes",
 	}
 	b := f.Marshal()
 	uf, err := Unmarshal(&b)
@@ -488,9 +518,9 @@ func TestUnmarshalDATAWithSmallPadding(t *testing.T) {
 
 func TestUnmarshalDATAWithLargePadding(t *testing.T) {
 	f := DATA{
-		StreamIdentifier: 37,
-		Data:             "This is the data associated with the data frame",
-		Padding:          "",
+		StreamId: 37,
+		Data:     "This is the data associated with the data frame",
+		Padding:  "",
 	}
 	paddingLength := 310
 	for i := 0; i < paddingLength; i++ {
@@ -507,7 +537,7 @@ func TestUnmarshalDATAWithLargePadding(t *testing.T) {
 }
 
 func TestUnmarshalDATAWithEndStream(t *testing.T) {
-	f := DATA{StreamIdentifier: 123}
+	f := DATA{StreamId: 123}
 	f.Flags.END_STREAM = true
 
 	b := f.Marshal()
@@ -519,7 +549,7 @@ func TestUnmarshalDATAWithEndStream(t *testing.T) {
 }
 
 func TestUnmarshalDATAWithEndSegment(t *testing.T) {
-	f := DATA{StreamIdentifier: 123}
+	f := DATA{StreamId: 123}
 	f.Flags.END_SEGMENT = true
 
 	b := f.Marshal()
@@ -537,15 +567,15 @@ func assertUnmarshalError(t *testing.T, b []byte, expectedError error) {
 	assert.Equal(t, err, expectedError)
 }
 
-func TestUnmarshalDATAWithNoStreamIdentifierIsAnError(t *testing.T) {
+func TestUnmarshalDATAWithNoStreamIdIsAnError(t *testing.T) {
 	f := DATA{}
-	f.StreamIdentifier = 0
+	f.StreamId = 0
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "DATA frame must have stream identifier"})
 }
 
 func TestUnmarshalDATAWithIncompatiblePaddingFlagsIsAProtocolError(t *testing.T) {
-	f := DATA{StreamIdentifier: 123, Data: "dagljkjagldka"}
+	f := DATA{StreamId: 123, Data: "dagljkjagldka"}
 	b := f.Marshal()
 	b[3] = 0x10
 
@@ -577,7 +607,7 @@ func TestUnmarshalPINGWithACK(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalPINGWithStreamIdentifierIsProtocolError(t *testing.T) {
+func TestUnmarshalPINGWithStreamIdIsProtocolError(t *testing.T) {
 	f := PING{}
 	f.OpaqueData = 2198179
 
@@ -612,7 +642,7 @@ func TestUnmarshalGOAWAY(t *testing.T) {
 
 func TestUnmarshalHEADERS(t *testing.T) {
 	f := HEADERS{}
-	f.StreamIdentifier = 2139480
+	f.StreamId = 2139480
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 	f.Flags.END_HEADERS = true
 
@@ -626,8 +656,8 @@ func TestUnmarshalHEADERS(t *testing.T) {
 
 func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
 	f := HEADERS{}
-	f.StreamIdentifier = 2139480
-	f.PriorityGroupIdentifier = 21984080
+	f.StreamId = 2139480
+	f.PriorityGroupId = 21984080
 	f.Weight = 123
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 	f.Flags.PRIORITY_GROUP = true
@@ -642,7 +672,7 @@ func TestUnmarshalHEADERSWithPriorityGroup(t *testing.T) {
 
 func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
-	f.StreamIdentifier = 2139480
+	f.StreamId = 2139480
 	f.StreamDependency = 39781097
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.Flags.EXCLUSIVE = true
@@ -656,7 +686,7 @@ func TestUnmarshalHEADERSWithPriorityDependency(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalHEADERSWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
+func TestUnmarshalHEADERSWithNoStreamIdIsAProtocolError(t *testing.T) {
 	f := HEADERS{}
 
 	b := f.Marshal()
@@ -666,7 +696,7 @@ func TestUnmarshalHEADERSWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
 
 func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
 	f := HEADERS{}
-	f.StreamIdentifier = 1
+	f.StreamId = 1
 	b := f.Marshal()
 	b[3] |= 0x20
 	b[3] |= 0x40
@@ -676,7 +706,7 @@ func TestUnmarshalHEADERSWithConflictingPriorityGroupAndDependenciesIsAProtocolE
 
 func TestUnmarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
 	f := PRIORITY{}
-	f.StreamIdentifier = 111
+	f.StreamId = 111
 	f.StreamDependency = 123
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.Flags.EXCLUSIVE = true
@@ -691,8 +721,8 @@ func TestUnmarshalPRIORITYWithExclusivePriorityDependency(t *testing.T) {
 
 func TestUnmarshalPRIORITYWithPriorityGroup(t *testing.T) {
 	f := PRIORITY{}
-	f.StreamIdentifier = 111
-	f.PriorityGroupIdentifier = 555
+	f.StreamId = 111
+	f.PriorityGroupId = 555
 	f.Weight = 123
 	f.Flags.PRIORITY_GROUP = true
 
@@ -704,7 +734,7 @@ func TestUnmarshalPRIORITYWithPriorityGroup(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalPRIORITYWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
+func TestUnmarshalPRIORITYWithNoStreamIdIsAProtocolError(t *testing.T) {
 	f := PRIORITY{}
 	b := f.Marshal()
 
@@ -713,7 +743,7 @@ func TestUnmarshalPRIORITYWithNoStreamIdentifierIsAProtocolError(t *testing.T) {
 
 func TestUnmarshalPRIORITYWithConflictingPriorityGroupAndDependenciesIsAProtocolError(t *testing.T) {
 	f := PRIORITY{}
-	f.StreamIdentifier = 1
+	f.StreamId = 1
 	b := f.Marshal()
 	b[3] |= 0x20
 	b[3] |= 0x40
@@ -724,7 +754,7 @@ func TestUnmarshalPRIORITYWithConflictingPriorityGroupAndDependenciesIsAProtocol
 func TestUnmarshalRST_STREAM(t *testing.T) {
 	f := RST_STREAM{}
 	f.ErrorCode = 12390
-	f.StreamIdentifier = 123
+	f.StreamId = 123
 
 	b := f.Marshal()
 	uf, err := Unmarshal(&b)
@@ -767,7 +797,7 @@ func TestUnmarshalSETTINGSWithAck(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalSETTINGSWithInvalidIdentifierIsAnError(t *testing.T) {
+func TestUnmarshalSETTINGSWithInvalidIdIsAnError(t *testing.T) {
 	f := SETTINGS{}
 	f.Parameters = []Parameter{{15, 512}}
 

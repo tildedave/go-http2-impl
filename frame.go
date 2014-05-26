@@ -9,17 +9,17 @@ var _ = fmt.Printf // package fmt is now used
 
 // base is used internally to marshal other types of frames
 type base struct {
-	Type             uint8
-	Flags            uint8
-	StreamIdentifier uint32
-	Payload          string
+	Type     uint8
+	Flags    uint8
+	StreamId uint32
+	Payload  string
 }
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.1
 type DATA struct {
-	StreamIdentifier uint32
-	Data             string
-	Padding          string
+	StreamId uint32
+	Data     string
+	Padding  string
 
 	Flags struct {
 		END_STREAM  bool
@@ -29,12 +29,12 @@ type DATA struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.2
 type HEADERS struct {
-	StreamIdentifier        uint32
-	PriorityGroupIdentifier uint32
-	Weight                  uint8
-	StreamDependency        uint32
-	HeaderBlockFragment     string
-	Padding                 string
+	StreamId            uint32
+	PriorityGroupId     uint32
+	Weight              uint8
+	StreamDependency    uint32
+	HeaderBlockFragment string
+	Padding             string
 
 	Flags struct {
 		END_STREAM          bool
@@ -48,11 +48,11 @@ type HEADERS struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.3
 type PRIORITY struct {
-	StreamIdentifier        uint32
-	PriorityGroupIdentifier uint32
-	Weight                  uint8
-	StreamDependency        uint32
-	Flags                   struct {
+	StreamId         uint32
+	PriorityGroupId  uint32
+	Weight           uint8
+	StreamDependency uint32
+	Flags            struct {
 		PRIORITY_GROUP      bool
 		PRIORITY_DEPENDENCY bool
 		EXCLUSIVE           bool
@@ -61,8 +61,18 @@ type PRIORITY struct {
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.4
 type RST_STREAM struct {
-	StreamIdentifier uint32
-	ErrorCode        uint32
+	StreamId  uint32
+	ErrorCode uint32
+}
+
+type PUSH_PROMISE struct {
+	StreamId            uint32
+	PromisedStreamId    uint32
+	HeaderBlockFragment string
+	Padding             string
+	Flags               struct {
+		END_HEADERS bool
+	}
 }
 
 const (
@@ -74,8 +84,8 @@ const (
 
 // http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#page-35
 type Parameter struct {
-	Identifier uint8
-	Value      uint32
+	Id    uint8
+	Value uint32
 }
 
 type SETTINGS struct {
@@ -134,7 +144,7 @@ func (f base) Marshal() []byte {
 	binary.BigEndian.PutUint16(header, uint16(len(f.Payload)))
 	header[2] = f.Type
 	header[3] = f.Flags
-	binary.BigEndian.PutUint32(header[4:8], f.StreamIdentifier)
+	binary.BigEndian.PutUint32(header[4:8], f.StreamId)
 
 	return append(header, f.Payload...)
 }
@@ -192,7 +202,7 @@ func paddingHeaders(b *base, padding string) []byte {
 func (f DATA) Marshal() []byte {
 	b := base{}
 	b.Type = 0x0
-	b.StreamIdentifier = f.StreamIdentifier
+	b.StreamId = f.StreamId
 
 	payload := paddingHeaders(&b, f.Padding)
 	payload = append(payload, f.Data...)
@@ -212,12 +222,12 @@ func (f DATA) Marshal() []byte {
 func (f HEADERS) Marshal() []byte {
 	b := base{}
 	b.Type = 0x1
-	b.StreamIdentifier = f.StreamIdentifier
+	b.StreamId = f.StreamId
 
 	flagHeaders := make([]byte, 0, 5)
 	if f.Flags.PRIORITY_GROUP {
 		flagHeaders = flagHeaders[0:5]
-		binary.BigEndian.PutUint32(flagHeaders, f.PriorityGroupIdentifier)
+		binary.BigEndian.PutUint32(flagHeaders, f.PriorityGroupId)
 		flagHeaders[0] |= 0x80
 		flagHeaders[4] = f.Weight
 		b.Flags |= 0x20
@@ -255,7 +265,7 @@ func (f HEADERS) Marshal() []byte {
 func (f PRIORITY) Marshal() []byte {
 	b := base{}
 	b.Type = 0x2
-	b.StreamIdentifier = f.StreamIdentifier
+	b.StreamId = f.StreamId
 
 	var payload []byte
 	if f.Flags.PRIORITY_DEPENDENCY {
@@ -268,7 +278,7 @@ func (f PRIORITY) Marshal() []byte {
 	} else if f.Flags.PRIORITY_GROUP {
 		b.Flags |= 0x20
 		payload = make([]byte, 5)
-		binary.BigEndian.PutUint32(payload, f.PriorityGroupIdentifier)
+		binary.BigEndian.PutUint32(payload, f.PriorityGroupId)
 		payload[4] = f.Weight
 	}
 	b.Payload = string(payload)
@@ -279,7 +289,7 @@ func (f PRIORITY) Marshal() []byte {
 func (f RST_STREAM) Marshal() []byte {
 	b := base{}
 	b.Type = 0x3
-	b.StreamIdentifier = f.StreamIdentifier
+	b.StreamId = f.StreamId
 
 	payload := make([]byte, 4)
 	binary.BigEndian.PutUint32(payload, f.ErrorCode)
@@ -294,7 +304,7 @@ func (f SETTINGS) Marshal() []byte {
 
 	payload := make([]byte, len(f.Parameters)*5)
 	for i, parameter := range f.Parameters {
-		payload[i*5] = parameter.Identifier
+		payload[i*5] = parameter.Id
 		binary.BigEndian.PutUint32(payload[i*5+1:], parameter.Value)
 	}
 	b.Payload = string(payload)
@@ -306,12 +316,31 @@ func (f SETTINGS) Marshal() []byte {
 	return b.Marshal()
 }
 
+func (f PUSH_PROMISE) Marshal() []byte {
+	b := base{}
+	b.Type = 0x5
+
+	if f.Flags.END_HEADERS {
+		b.Flags |= 0x4
+	}
+
+	headers := paddingHeaders(&b, f.Padding)
+	payload := make([]byte, 4+len(f.HeaderBlockFragment)+len(f.Padding))
+	binary.BigEndian.PutUint32(payload[0:4], f.PromisedStreamId)
+	copy(payload[4:4+len(f.HeaderBlockFragment)], f.HeaderBlockFragment)
+	copy(payload[4+len(f.HeaderBlockFragment):], f.Padding)
+
+	b.Payload = string(append(headers, payload...))
+
+	return b.Marshal()
+}
+
 func Unmarshal(wire *[]byte) (Frame, error) {
 	// TODO: validation that all this is well formed.
 	payloadLen := binary.BigEndian.Uint16([]byte{(*wire)[0] & 0x3F, (*wire)[1]})
 	frameType := (*wire)[2]
 	frameFlags := (*wire)[3]
-	streamIdentifier := binary.BigEndian.Uint32([]byte{
+	streamId := binary.BigEndian.Uint32([]byte{
 		(*wire)[4] & 0x7F,
 		(*wire)[5],
 		(*wire)[6],
@@ -326,41 +355,41 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 
 	switch frameType {
 	case 0x0:
-		if streamIdentifier == 0 {
+		if streamId == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"DATA frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, toDecode)
+		f, err = unmarshalDataPayload(frameFlags, streamId, toDecode)
 	case 0x1:
-		if streamIdentifier == 0 {
+		if streamId == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"HEADERS frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, toDecode)
+		f, err = unmarshalHeadersPayload(frameFlags, streamId, toDecode)
 	case 0x2:
-		if streamIdentifier == 0 {
+		if streamId == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"PRIORITY frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalPriorityPayload(frameFlags, streamIdentifier, toDecode)
+		f, err = unmarshalPriorityPayload(frameFlags, streamId, toDecode)
 	case 0x3:
-		if streamIdentifier == 0 {
+		if streamId == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"RST_STREAM frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalRstStreamPayload(streamIdentifier, toDecode)
+		f, err = unmarshalRstStreamPayload(streamId, toDecode)
 	case 0x4:
 		f, err = unmarshalSettingsPayload(frameFlags, toDecode)
 	case 0x6:
-		if streamIdentifier != 0 {
+		if streamId != 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"PING frame must not have stream identifier",
@@ -421,7 +450,7 @@ func decodePaddingLength(frameFlags uint8, payload *string) (uint16, error) {
 	return paddingLength, nil
 }
 
-func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
+func unmarshalDataPayload(frameFlags uint8, streamId uint32, payload string) (Frame, error) {
 	// Check flags for pad high/pad low
 
 	f := DATA{}
@@ -442,7 +471,7 @@ func unmarshalDataPayload(frameFlags uint8, streamIdentifier uint32, payload str
 
 	payload = payload[dataLength:]
 	f.Padding = payload[0:paddingLength]
-	f.StreamIdentifier = streamIdentifier
+	f.StreamId = streamId
 
 	return f, nil
 }
@@ -462,9 +491,9 @@ func unmarshalGoAwayPayload(payload string) (Frame, error) {
 	}, nil
 }
 
-func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
+func unmarshalHeadersPayload(frameFlags uint8, streamId uint32, payload string) (Frame, error) {
 	f := HEADERS{}
-	f.StreamIdentifier = streamIdentifier
+	f.StreamId = streamId
 
 	paddingLength, err := decodePaddingLength(frameFlags, &payload)
 	if err != nil {
@@ -489,7 +518,7 @@ func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload 
 	if flagIsSet(frameFlags, 0x20) {
 		// Priority group fields (priority group identifier and weight) are
 		// present
-		f.PriorityGroupIdentifier = binary.BigEndian.Uint32([]byte{
+		f.PriorityGroupId = binary.BigEndian.Uint32([]byte{
 			payload[0] & 0x7F,
 			payload[1],
 			payload[2],
@@ -522,9 +551,9 @@ func unmarshalHeadersPayload(frameFlags uint8, streamIdentifier uint32, payload 
 	return f, nil
 }
 
-func unmarshalPriorityPayload(frameFlags uint8, streamIdentifier uint32, payload string) (Frame, error) {
+func unmarshalPriorityPayload(frameFlags uint8, streamId uint32, payload string) (Frame, error) {
 	f := PRIORITY{}
-	f.StreamIdentifier = streamIdentifier
+	f.StreamId = streamId
 
 	if flagIsSet(frameFlags, 0x20) && flagIsSet(frameFlags, 0x40) {
 		return nil, ConnectionError{
@@ -534,7 +563,7 @@ func unmarshalPriorityPayload(frameFlags uint8, streamIdentifier uint32, payload
 	}
 	if flagIsSet(frameFlags, 0x20) {
 		f.Flags.PRIORITY_GROUP = true
-		f.PriorityGroupIdentifier = binary.BigEndian.Uint32([]byte{
+		f.PriorityGroupId = binary.BigEndian.Uint32([]byte{
 			payload[0] & 0x7F,
 			payload[1],
 			payload[2],
@@ -557,9 +586,9 @@ func unmarshalPriorityPayload(frameFlags uint8, streamIdentifier uint32, payload
 	return f, nil
 }
 
-func unmarshalRstStreamPayload(streamIdentifier uint32, payload string) (Frame, error) {
+func unmarshalRstStreamPayload(streamId uint32, payload string) (Frame, error) {
 	f := RST_STREAM{}
-	f.StreamIdentifier = streamIdentifier
+	f.StreamId = streamId
 	f.ErrorCode = binary.BigEndian.Uint32([]byte(payload))
 
 	return f, nil
