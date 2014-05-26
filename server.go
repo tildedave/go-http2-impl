@@ -47,7 +47,8 @@ func (c *conn) serve() error {
 	}
 
 	c.ioc.Write([]byte(preface))
-	// TODO: SETTINGS frame
+	c.ioc.Write(SETTINGS{}.Marshal())
+	// wait for ACK
 
 	return nil
 }

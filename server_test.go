@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"
 	"time"
 )
+
+var _ = fmt.Printf // package fmt is now used
 
 type dummyAddr string
 
@@ -49,6 +52,11 @@ func (c *fakeConn) SetDeadline(t time.Time) error      { return nil }
 func (c *fakeConn) SetReadDeadline(t time.Time) error  { return nil }
 func (c *fakeConn) SetWriteDeadline(t time.Time) error { return nil }
 
+func (c *fakeConn) Clear() {
+	c.readData = make([][]byte, 0)
+	c.written = make([]byte, 0)
+}
+
 func newFakeConn() *fakeConn {
 	conn := new(fakeConn)
 	conn.written = make([]byte, 0)
@@ -63,7 +71,7 @@ func newTestConn() (conn, *fakeConn) {
 	return conn, ioc
 }
 
-func TestInitiateConnWithoutPreface(t *testing.T) {
+func TestServeWithoutPreface(t *testing.T) {
 	conn, fakeConn := newTestConn()
 
 	f := GOAWAY{0, 1, "Did not include connection preface"}
@@ -76,15 +84,27 @@ func TestInitiateConnWithoutPreface(t *testing.T) {
 	assert.True(t, fakeConn.closed, "Should have closed the connection")
 }
 
-func TestRespondWithThePreface(t *testing.T) {
+func TestServeWithThePreface(t *testing.T) {
 	conn, fakeConn := newTestConn()
 
-	// also needs to write settings frame too.
 	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
 	fakeConn.readData = [][]byte{[]byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")}
 	conn.serve()
 
-	assert.Equal(t, fakeConn.written, []byte(preface))
+	assert.Equal(t, fakeConn.written[0:len(preface)], []byte(preface))
+	assert.False(t, fakeConn.closed)
+}
+
+func TestServeWithThePrefaceSendsSettingsFrame(t *testing.T) {
+	conn, fakeConn := newTestConn()
+
+	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+	settingsFrame := SETTINGS{}
+
+	fakeConn.readData = [][]byte{[]byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")}
+	conn.serve()
+
+	assert.Equal(t, fakeConn.written[len(preface):], settingsFrame.Marshal())
 	assert.False(t, fakeConn.closed)
 }
