@@ -538,12 +538,11 @@ func TestUnmarshalDATA_WithSmallPadding(t *testing.T) {
 		Padding:  "This padding is less than 256 bytes",
 	}
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, DATA{}, uf)
 	assert.Equal(t, uf, f)
-	assert.Equal(t, len(b), 0)
 }
 
 func TestUnmarshalDATA_WithLargePadding(t *testing.T) {
@@ -558,12 +557,11 @@ func TestUnmarshalDATA_WithLargePadding(t *testing.T) {
 	}
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, DATA{}, uf)
 	assert.Equal(t, uf, f)
-	assert.Equal(t, len(b), 0)
 }
 
 func TestUnmarshalDATA_WithEndStream(t *testing.T) {
@@ -571,7 +569,7 @@ func TestUnmarshalDATA_WithEndStream(t *testing.T) {
 	f.Flags.END_STREAM = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, DATA{}, uf)
@@ -583,7 +581,7 @@ func TestUnmarshalDATA_WithEndSegment(t *testing.T) {
 	f.Flags.END_SEGMENT = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, DATA{}, uf)
@@ -591,7 +589,7 @@ func TestUnmarshalDATA_WithEndSegment(t *testing.T) {
 }
 
 func assertUnmarshalError(t *testing.T, b []byte, expectedError error) {
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, uf)
 	assert.Equal(t, err, expectedError)
@@ -617,7 +615,7 @@ func TestUnmarshalPING(t *testing.T) {
 	f.OpaqueData = 2198179
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, PING{}, uf)
@@ -630,7 +628,7 @@ func TestUnmarshalPING_WithACK(t *testing.T) {
 	f.Flags.ACK = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, PING{}, uf)
@@ -663,7 +661,7 @@ func TestUnmarshalGOAWAY(t *testing.T) {
 	}
 	b := f.Marshal()
 
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, GOAWAY{}, uf)
@@ -677,7 +675,7 @@ func TestUnmarshalHEADERS(t *testing.T) {
 	f.Flags.END_HEADERS = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, HEADERS{}, uf)
@@ -693,7 +691,7 @@ func TestUnmarshalHEADERS_WithPriorityGroup(t *testing.T) {
 	f.Flags.PRIORITY_GROUP = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, HEADERS{}, uf)
@@ -709,7 +707,7 @@ func TestUnmarshalHEADERS_WithPriorityDependency(t *testing.T) {
 	f.HeaderBlockFragment = "accept-encoding:gzip"
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, HEADERS{}, uf)
@@ -742,7 +740,7 @@ func TestUnmarshalPRIORITY_WithExclusivePriorityDependency(t *testing.T) {
 	f.Flags.EXCLUSIVE = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, PRIORITY{}, uf)
@@ -757,7 +755,7 @@ func TestUnmarshalPRIORITY_WithPriorityGroup(t *testing.T) {
 	f.Flags.PRIORITY_GROUP = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, PRIORITY{}, uf)
@@ -787,7 +785,7 @@ func TestUnmarshalRST_STREAM(t *testing.T) {
 	f.StreamId = 123
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, RST_STREAM{}, uf)
@@ -808,7 +806,7 @@ func TestUnmarshalSETTINGS(t *testing.T) {
 	}
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, SETTINGS{}, uf)
@@ -820,7 +818,7 @@ func TestUnmarshalSETTINGS_WithAck(t *testing.T) {
 	f.Flags.ACK = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, SETTINGS{}, uf)
@@ -851,7 +849,7 @@ func TestUnmarshalPUSH_PROMISE(t *testing.T) {
 	f.Flags.END_HEADERS = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, PUSH_PROMISE{}, uf)
@@ -872,7 +870,7 @@ func TestUnmarshalCONTINUATION(t *testing.T) {
 	f.Flags.END_HEADERS = true
 
 	b := f.Marshal()
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.IsType(t, CONTINUATION{}, uf)
@@ -890,7 +888,7 @@ func TestUnmarshalIncompleteHeader(t *testing.T) {
 	f.OpaqueData = 2198179
 
 	b := f.Marshal()[0:3]
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.Nil(t, uf)
@@ -901,7 +899,7 @@ func TestUnmarshalIncompletePayload(t *testing.T) {
 	f.OpaqueData = 2198179
 
 	b := f.Marshal()[0:11]
-	uf, err := Unmarshal(&b)
+	uf, err := Unmarshal(b)
 
 	assert.Nil(t, err)
 	assert.Nil(t, uf)
