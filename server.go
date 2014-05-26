@@ -2,8 +2,12 @@ package main
 
 import (
 	"bufio"
+	"fmt"
+	"io"
 	"strings"
 )
+
+var _ = fmt.Printf // package fmt is now used
 
 type Conn interface {
 	Read(b []byte) (n int, err error)
@@ -21,7 +25,7 @@ func (s *Server) InitiateConn(conn Conn) error {
 	str := ""
 
 	// TODO: connection upgrade from HTTP 1.0
-	for stopped := scanner.Scan() ; stopped != false ; stopped = scanner.Scan() {
+	for stopped := scanner.Scan(); stopped != false; stopped = scanner.Scan() {
 		str += scanner.Text() + "\r\n"
 		if !strings.HasPrefix(preface, str) {
 			f := GOAWAY{0, 1, "Did not include connection preface"}
@@ -38,5 +42,18 @@ func (s *Server) InitiateConn(conn Conn) error {
 	conn.Write([]byte(preface))
 	// TODO: SETTINGS frame
 
-	return nil;
+	return nil
+}
+
+func NewFrameScanner(r io.Reader) *bufio.Scanner {
+	s := bufio.NewScanner(r)
+	s.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		advance, f, err := Unmarshal(data)
+		if f != nil || err != nil {
+			return advance, data[0:advance], err
+		}
+
+		return 0, nil, nil
+	})
+	return s
 }

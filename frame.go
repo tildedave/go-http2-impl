@@ -369,10 +369,10 @@ func (f CONTINUATION) Marshal() []byte {
 	return b.Marshal()
 }
 
-func Unmarshal(wire []byte) (Frame, error) {
+func Unmarshal(wire []byte) (advance int, f Frame, err error) {
 	if len(wire) < 8 {
 		// Incomplete header
-		return nil, nil
+		return 0, nil, nil
 	}
 	payloadLen := binary.BigEndian.Uint16([]byte{wire[0] & 0x3F, wire[1]})
 	frameType := wire[2]
@@ -385,18 +385,16 @@ func Unmarshal(wire []byte) (Frame, error) {
 	})
 	if uint16(len(wire)) < payloadLen+8 {
 		// Incomplete payload
-		return nil, nil
+		return 0, nil, nil
 	}
 
-	toDecode := string(wire[8 : payloadLen+8])
-
-	var err error
-	var f Frame
+	advance = int(payloadLen + 8)
+	toDecode := string(wire[8:advance])
 
 	switch frameType {
 	case 0x0:
 		if streamId == 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"DATA frame must have stream identifier",
 			}
@@ -404,7 +402,7 @@ func Unmarshal(wire []byte) (Frame, error) {
 		f, err = unmarshalDataPayload(frameFlags, streamId, toDecode)
 	case 0x1:
 		if streamId == 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"HEADERS frame must have stream identifier",
 			}
@@ -412,7 +410,7 @@ func Unmarshal(wire []byte) (Frame, error) {
 		f, err = unmarshalHeadersPayload(frameFlags, streamId, toDecode)
 	case 0x2:
 		if streamId == 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"PRIORITY frame must have stream identifier",
 			}
@@ -420,7 +418,7 @@ func Unmarshal(wire []byte) (Frame, error) {
 		f, err = unmarshalPriorityPayload(frameFlags, streamId, toDecode)
 	case 0x3:
 		if streamId == 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"RST_STREAM frame must have stream identifier",
 			}
@@ -430,7 +428,7 @@ func Unmarshal(wire []byte) (Frame, error) {
 		f, err = unmarshalSettingsPayload(frameFlags, toDecode)
 	case 0x5:
 		if streamId == 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"PUSH_PROMISE frame must have stream identifier",
 			}
@@ -438,13 +436,13 @@ func Unmarshal(wire []byte) (Frame, error) {
 		f, err = unmarshalPushPromisePayload(frameFlags, streamId, toDecode)
 	case 0x6:
 		if streamId != 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"PING frame must not have stream identifier",
 			}
 		}
 		if payloadLen != 8 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				FRAME_SIZE_ERROR,
 				"PING payload must have length of 8",
 			}
@@ -454,7 +452,7 @@ func Unmarshal(wire []byte) (Frame, error) {
 		f, err = unmarshalGoAwayPayload(toDecode)
 	case 0x9:
 		if streamId == 0 {
-			return nil, ConnectionError{
+			return advance, nil, ConnectionError{
 				PROTOCOL_ERROR,
 				"CONTINUATION frame must have stream identifier",
 			}
@@ -463,9 +461,9 @@ func Unmarshal(wire []byte) (Frame, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return advance, nil, err
 	}
-	return f, nil
+	return advance, f, nil
 }
 
 func flagIsSet(flags uint8, mask uint8) bool {
