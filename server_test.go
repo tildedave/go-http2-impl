@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/tildedave/go-http2-impl/http2"
 	"net"
 	"testing"
 	"time"
@@ -64,9 +65,9 @@ func newFakeConn() *fakeConn {
 	return conn
 }
 
-func newTestConn() (conn, *fakeConn) {
+func newTestConn() (http2.Conn, *fakeConn) {
 	ioc := newFakeConn()
-	conn := newConn(ioc)
+	conn := http2.NewConn(ioc)
 
 	return conn, ioc
 }
@@ -78,7 +79,7 @@ func TestServeWithoutPreface(t *testing.T) {
 	bytes := f.Marshal()
 
 	fakeConn.readData = [][]byte{[]byte("not the preface")}
-	conn.serve()
+	serve(conn)
 
 	assert.Equal(t, fakeConn.written, bytes)
 	assert.True(t, fakeConn.closed, "Should have closed the connection")
@@ -90,7 +91,7 @@ func TestServeWithThePreface(t *testing.T) {
 	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
 	fakeConn.readData = [][]byte{[]byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")}
-	conn.serve()
+	serve(conn)
 
 	assert.Equal(t, fakeConn.written[0:len(preface)], []byte(preface))
 	assert.False(t, fakeConn.closed)
@@ -103,7 +104,7 @@ func TestServeWithThePrefaceSendsSettingsFrame(t *testing.T) {
 	settingsFrame := SETTINGS{}
 
 	fakeConn.readData = [][]byte{[]byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")}
-	conn.serve()
+	serve(conn)
 
 	assert.Equal(t, fakeConn.written[len(preface):], settingsFrame.Marshal())
 	assert.False(t, fakeConn.closed)
