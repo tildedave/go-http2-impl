@@ -319,6 +319,7 @@ func (f SETTINGS) Marshal() []byte {
 func (f PUSH_PROMISE) Marshal() []byte {
 	b := base{}
 	b.Type = 0x5
+	b.StreamId = f.StreamId
 
 	if f.Flags.END_HEADERS {
 		b.Flags |= 0x4
@@ -388,6 +389,8 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		f, err = unmarshalRstStreamPayload(streamId, toDecode)
 	case 0x4:
 		f, err = unmarshalSettingsPayload(frameFlags, toDecode)
+	case 0x5:
+		f, err = unmarshalPushPromisePayload(frameFlags, streamId, toDecode)
 	case 0x6:
 		if streamId != 0 {
 			return nil, ConnectionError{
@@ -626,6 +629,32 @@ func unmarshalSettingsPayload(frameFlags uint8, payload string) (Frame, error) {
 		})
 		payload = payload[5:]
 	}
+
+	return f, nil
+}
+
+func unmarshalPushPromisePayload(frameFlags uint8, streamId uint32, payload string) (Frame, error) {
+	f := PUSH_PROMISE{}
+	f.StreamId = streamId
+	if flagIsSet(frameFlags, 0x4) {
+		f.Flags.END_HEADERS = true
+	}
+
+	paddingLength, err := decodePaddingLength(frameFlags, &payload)
+	if err != nil {
+		return nil, err
+	}
+
+	f.PromisedStreamId = binary.BigEndian.Uint32([]byte{
+		payload[0] & 0x7F,
+		payload[1],
+		payload[2],
+		payload[3],
+	})
+	payload = payload[4:]
+	headerBlockLength := uint16(len(payload)) - paddingLength
+	f.HeaderBlockFragment = payload[0:headerBlockLength]
+	f.Padding = payload[headerBlockLength:]
 
 	return f, nil
 }

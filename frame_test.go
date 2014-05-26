@@ -811,3 +811,19 @@ func TestUnmarshalSETTINGSWithAckAndPayloadIsAConnectionError(t *testing.T) {
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{FRAME_SIZE_ERROR, "Payload of Settings frame with ACK flag must be empty"})
 }
+
+func TestUnmarshalPUSH_PROMISE(t *testing.T) {
+	f := PUSH_PROMISE{}
+	f.StreamId = 123
+	f.PromisedStreamId = 456
+	f.HeaderBlockFragment = "fragment of header block"
+	f.Padding = "aaaaaaaaaaaaa"
+	f.Flags.END_HEADERS = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, PUSH_PROMISE{}, uf)
+	assert.Equal(t, f, uf)
+}
