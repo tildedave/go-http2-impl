@@ -254,36 +254,10 @@ func TestMarshalHEADERS(t *testing.T) {
 		[]byte("accept-encoding:gzip"))
 }
 
-func TestMarshalHEADERS_WithPriorityGroup(t *testing.T) {
-	f := HEADERS{}
-	f.PriorityGroupId = 21984080
-	f.Weight = 123
-	f.HeaderBlockFragment = "accept-encoding:gzip"
-	f.Flags.PRIORITY_GROUP = true
-
-	marshalled := f.Marshal()
-
-	assert.Equal(t, frameFlags(marshalled)&0x20, byte(0x20),
-		"Flag for PRIORITY_GROUP should have been set")
-
-	assert.Equal(t, marshalled[8]&0x80, byte(0x80),
-		"R bit for PRIORITY_GROUP should have been set")
-
-	assert.Equal(t,
-		binary.BigEndian.Uint32(marshalled[8:12])^0x80000000,
-		f.PriorityGroupId,
-		"Priority group identifier did not match")
-
-	assert.Equal(t, marshalled[12], byte(f.Weight), "Weight did not match")
-
-	assert.Equal(t,
-		marshalled[13:],
-		[]byte("accept-encoding:gzip"))
-}
-
 func TestMarshalHEADERS_WithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
 	f.StreamDependency = 39781097
+	f.Weight = 21
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.Flags.EXCLUSIVE = true
 	f.HeaderBlockFragment = "accept-encoding:gzip"
@@ -301,8 +275,9 @@ func TestMarshalHEADERS_WithPriorityDependency(t *testing.T) {
 		f.StreamDependency,
 		"Stream dependency did not match")
 
+	assert.Equal(t, marshalled[12], f.Weight, "Weight did not match")
 	assert.Equal(t,
-		marshalled[12:],
+		marshalled[13:],
 		[]byte("accept-encoding:gzip"))
 }
 
@@ -405,6 +380,7 @@ func TestMarshalPRIORITY_WithExclusivePriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.StreamDependency = 123456
+	f.Weight = 31
 	f.Flags.EXCLUSIVE = true
 
 	marshalled := f.Marshal()
@@ -422,24 +398,6 @@ func TestMarshalPRIORITY_WithExclusivePriorityDependency(t *testing.T) {
 	assert.Equal(t, dependency, f.StreamDependency,
 		"Stream dependency was not correct in the payload")
 	assert.Equal(t, marshalled[8]&0x80, uint8(0x80))
-}
-
-func TestMarshalPRIORITY_WithPriorityGroup(t *testing.T) {
-	f := PRIORITY{}
-	f.Flags.PRIORITY_GROUP = true
-	f.PriorityGroupId = 912742
-	f.Weight = 111
-
-	marshalled := f.Marshal()
-	assert.Equal(t, frameType(marshalled), uint8(0x2),
-		"Expected frame type of priority to be 0x2")
-	assert.Equal(t, frameFlags(marshalled)&0x20, uint8(0x20),
-		"Headers frame should have had priority group set")
-	assert.Equal(t, binary.BigEndian.Uint32(marshalled[8:12]),
-		f.PriorityGroupId,
-		"Priority Group Id was not correct in the payload")
-	assert.Equal(t, marshalled[12], f.Weight,
-		"Weight was not correct in the payload")
 }
 
 func TestMarshalRST_STREAM(t *testing.T) {
@@ -719,26 +677,11 @@ func TestUnmarshalHEADERS(t *testing.T) {
 	assert.Equal(t, f, uf)
 }
 
-func TestUnmarshalHEADERS_WithPriorityGroup(t *testing.T) {
-	f := HEADERS{}
-	f.StreamId = 2139480
-	f.PriorityGroupId = 21984080
-	f.Weight = 123
-	f.HeaderBlockFragment = "accept-encoding:gzip"
-	f.Flags.PRIORITY_GROUP = true
-
-	b := f.Marshal()
-	_, uf, err := Unmarshal(b)
-
-	assert.Nil(t, err)
-	assert.IsType(t, HEADERS{}, uf)
-	assert.Equal(t, f, uf)
-}
-
 func TestUnmarshalHEADERS_WithPriorityDependency(t *testing.T) {
 	f := HEADERS{}
 	f.StreamId = 2139480
 	f.StreamDependency = 39781097
+	f.Weight = 5
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.Flags.EXCLUSIVE = true
 	f.HeaderBlockFragment = "accept-encoding:gzip"
@@ -759,37 +702,13 @@ func TestUnmarshalHEADERS_WithNoStreamId(t *testing.T) {
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "HEADERS frame must have stream identifier"})
 }
 
-func TestUnmarshalHEADERS_WithConflictingPriorityGroupAndDependencies(t *testing.T) {
-	f := HEADERS{}
-	f.StreamId = 1
-	b := f.Marshal()
-	b[3] |= 0x20
-	b[3] |= 0x40
-
-	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags"})
-}
-
 func TestUnmarshalPRIORITY_WithExclusivePriorityDependency(t *testing.T) {
 	f := PRIORITY{}
 	f.StreamId = 111
 	f.StreamDependency = 123
+	f.Weight = 5
 	f.Flags.PRIORITY_DEPENDENCY = true
 	f.Flags.EXCLUSIVE = true
-
-	b := f.Marshal()
-	_, uf, err := Unmarshal(b)
-
-	assert.Nil(t, err)
-	assert.IsType(t, PRIORITY{}, uf)
-	assert.Equal(t, f, uf)
-}
-
-func TestUnmarshalPRIORITY_WithPriorityGroup(t *testing.T) {
-	f := PRIORITY{}
-	f.StreamId = 111
-	f.PriorityGroupId = 555
-	f.Weight = 123
-	f.Flags.PRIORITY_GROUP = true
 
 	b := f.Marshal()
 	_, uf, err := Unmarshal(b)
@@ -804,16 +723,6 @@ func TestUnmarshalPRIORITY_WithNoStreamId(t *testing.T) {
 	b := f.Marshal()
 
 	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "PRIORITY frame must have stream identifier"})
-}
-
-func TestUnmarshalPRIORITY_WithConflictingFlags(t *testing.T) {
-	f := PRIORITY{}
-	f.StreamId = 1
-	b := f.Marshal()
-	b[3] |= 0x20
-	b[3] |= 0x40
-
-	assertUnmarshalError(t, b, ConnectionError{PROTOCOL_ERROR, "Cannot set both PRIORITY_GROUP and PRIORITY_DEPENDENCY flags"})
 }
 
 func TestUnmarshalRST_STREAM(t *testing.T) {
