@@ -3,5 +3,5 @@ language: go
 go:
   - 1.2
 install:
-  - go get github.com/stretchr/testify/assert
+  - go get github.com/tildedave/go-hpack-impl/hpack
   - go get github.com/stretchr/testify/mock

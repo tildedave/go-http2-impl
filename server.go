@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/tildedave/go-hpack-impl/hpack"
 	"io"
 	"strings"
 )
@@ -16,6 +17,7 @@ type Conn interface {
 }
 
 type Server struct {
+	EncodingContext *hpack.EncodingContext
 }
 
 const preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
@@ -40,6 +42,7 @@ func (s *Server) InitiateConn(conn Conn) error {
 	}
 
 	conn.Write([]byte(preface))
+	s.EncodingContext = hpack.NewEncodingContext()
 	// TODO: SETTINGS frame
 
 	return nil
