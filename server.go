@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"github.com/tildedave/go-hpack-impl/hpack"
 	"io"
+	"net"
 	"strings"
 )
 
 var _ = fmt.Printf // package fmt is now used
-
-type Conn interface {
-	Read(b []byte) (n int, err error)
-	Write(b []byte) (n int, err error)
-	Close() error
-}
 
 type Server struct {
 	EncodingContext *hpack.EncodingContext
@@ -22,7 +17,7 @@ type Server struct {
 
 const preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
-func (s *Server) InitiateConn(conn Conn) error {
+func (s *Server) InitiateConn(conn net.Conn) error {
 	scanner := bufio.NewScanner(conn)
 	str := ""
 
