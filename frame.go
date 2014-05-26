@@ -370,7 +370,10 @@ func (f CONTINUATION) Marshal() []byte {
 }
 
 func Unmarshal(wire *[]byte) (Frame, error) {
-	// TODO: validation that all this is well formed.
+	if len(*wire) < 8 {
+		// Incomplete header
+		return nil, nil
+	}
 	payloadLen := binary.BigEndian.Uint16([]byte{(*wire)[0] & 0x3F, (*wire)[1]})
 	frameType := (*wire)[2]
 	frameFlags := (*wire)[3]
@@ -381,6 +384,11 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		(*wire)[7],
 	})
 	*wire = (*wire)[8:]
+
+	if uint16(len(*wire)) < payloadLen {
+		// Incomplete payload
+		return nil, nil
+	}
 	toDecode := string((*wire)[0:payloadLen])
 	*wire = (*wire)[payloadLen:]
 

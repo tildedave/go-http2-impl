@@ -884,3 +884,25 @@ func TestUnmarshalCONTINUATION_NoStreamId(t *testing.T) {
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "CONTINUATION frame must have stream identifier"})
 }
+
+func TestUnmarshalIncompleteHeader(t *testing.T) {
+	f := PING{}
+	f.OpaqueData = 2198179
+
+	b := f.Marshal()[0:3]
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.Nil(t, uf)
+}
+
+func TestUnmarshalIncompletePayload(t *testing.T) {
+	f := PING{}
+	f.OpaqueData = 2198179
+
+	b := f.Marshal()[0:11]
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.Nil(t, uf)
+}
