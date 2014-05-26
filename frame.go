@@ -59,6 +59,12 @@ type PRIORITY struct {
 	}
 }
 
+// http://tools.ietf.org/html/draft-ietf-httpbis-http2-11#section-6.4
+type RST_STREAM struct {
+	StreamIdentifier uint32
+	ErrorCode        uint32
+}
+
 const (
 	SETTINGS_HEADER_TABLE_SIZE      = 1
 	SETTINGS_ENABLE_PUSH            = 2
@@ -270,6 +276,18 @@ func (f PRIORITY) Marshal() []byte {
 	return b.Marshal()
 }
 
+func (f RST_STREAM) Marshal() []byte {
+	b := base{}
+	b.Type = 0x3
+	b.StreamIdentifier = f.StreamIdentifier
+
+	payload := make([]byte, 4)
+	binary.BigEndian.PutUint32(payload, f.ErrorCode)
+	b.Payload = string(payload)
+
+	return b.Marshal()
+}
+
 func (f SETTINGS) Marshal() []byte {
 	b := base{}
 	b.Type = 0x4
@@ -300,7 +318,7 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		(*wire)[7],
 	})
 	*wire = (*wire)[8:]
-	toDecode := (*wire)[0:payloadLen]
+	toDecode := string((*wire)[0:payloadLen])
 	*wire = (*wire)[payloadLen:]
 
 	var err error
@@ -311,44 +329,52 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		if streamIdentifier == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Data frame must have stream identifier",
+				"DATA frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, string(toDecode))
+		f, err = unmarshalDataPayload(frameFlags, streamIdentifier, toDecode)
 	case 0x1:
 		if streamIdentifier == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Headers frame must have stream identifier",
+				"HEADERS frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, string(toDecode))
+		f, err = unmarshalHeadersPayload(frameFlags, streamIdentifier, toDecode)
 	case 0x2:
 		if streamIdentifier == 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Priority frame must have stream identifier",
+				"PRIORITY frame must have stream identifier",
 			}
 		}
-		f, err = unmarshalPriorityPayload(frameFlags, streamIdentifier, string(toDecode))
+		f, err = unmarshalPriorityPayload(frameFlags, streamIdentifier, toDecode)
+	case 0x3:
+		if streamIdentifier == 0 {
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"RST_STREAM frame must have stream identifier",
+			}
+		}
+		f, err = unmarshalRstStreamPayload(streamIdentifier, toDecode)
 	case 0x4:
-		f, err = unmarshalSettingsPayload(frameFlags, string(toDecode))
+		f, err = unmarshalSettingsPayload(frameFlags, toDecode)
 	case 0x6:
 		if streamIdentifier != 0 {
 			return nil, ConnectionError{
 				PROTOCOL_ERROR,
-				"Ping frame must not have stream identifier",
+				"PING frame must not have stream identifier",
 			}
 		}
 		if payloadLen != 8 {
 			return nil, ConnectionError{
 				FRAME_SIZE_ERROR,
-				"Ping payload must have length of 8",
+				"PING payload must have length of 8",
 			}
 		}
-		f, err = unmarshalPingPayload(frameFlags, string(toDecode))
+		f, err = unmarshalPingPayload(frameFlags, toDecode)
 	case 0x7:
-		f, err = unmarshalGoAwayPayload(string(toDecode))
+		f, err = unmarshalGoAwayPayload(toDecode)
 	}
 
 	if err != nil {
@@ -528,6 +554,14 @@ func unmarshalPriorityPayload(frameFlags uint8, streamIdentifier uint32, payload
 			f.Flags.EXCLUSIVE = true
 		}
 	}
+	return f, nil
+}
+
+func unmarshalRstStreamPayload(streamIdentifier uint32, payload string) (Frame, error) {
+	f := RST_STREAM{}
+	f.StreamIdentifier = streamIdentifier
+	f.ErrorCode = binary.BigEndian.Uint32([]byte(payload))
+
 	return f, nil
 }
 
