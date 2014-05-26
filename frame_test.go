@@ -863,3 +863,24 @@ func TestUnmarshalPUSH_PROMISE_NoStreamId(t *testing.T) {
 
 	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "PUSH_PROMISE frame must have stream identifier"})
 }
+
+func TestUnmarshalCONTINUATION(t *testing.T) {
+	f := CONTINUATION{}
+	f.StreamId = 123
+	f.HeaderBlockFragment = "fragment of header block"
+	f.Padding = "aaaaaaaaaaaaa"
+	f.Flags.END_HEADERS = true
+
+	b := f.Marshal()
+	uf, err := Unmarshal(&b)
+
+	assert.Nil(t, err)
+	assert.IsType(t, CONTINUATION{}, uf)
+	assert.Equal(t, f, uf)
+}
+
+func TestUnmarshalCONTINUATION_NoStreamId(t *testing.T) {
+	f := CONTINUATION{}
+
+	assertUnmarshalError(t, f.Marshal(), ConnectionError{PROTOCOL_ERROR, "CONTINUATION frame must have stream identifier"})
+}

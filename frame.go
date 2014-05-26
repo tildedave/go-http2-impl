@@ -349,6 +349,8 @@ func (f PUSH_PROMISE) Marshal() []byte {
 func (f CONTINUATION) Marshal() []byte {
 	b := base{}
 	b.Type = 0x9
+	b.StreamId = f.StreamId
+
 	if f.Flags.END_HEADERS {
 		b.Flags |= 0x4
 	}
@@ -440,6 +442,14 @@ func Unmarshal(wire *[]byte) (Frame, error) {
 		f, err = unmarshalPingPayload(frameFlags, toDecode)
 	case 0x7:
 		f, err = unmarshalGoAwayPayload(toDecode)
+	case 0x9:
+		if streamId == 0 {
+			return nil, ConnectionError{
+				PROTOCOL_ERROR,
+				"CONTINUATION frame must have stream identifier",
+			}
+		}
+		f, err = unmarshalContinuationPayload(frameFlags, streamId, toDecode)
 	}
 
 	if err != nil {
@@ -685,6 +695,25 @@ func unmarshalPushPromisePayload(frameFlags uint8, streamId uint32, payload stri
 		payload[3],
 	})
 	payload = payload[4:]
+	headerBlockLength := uint16(len(payload)) - paddingLength
+	f.HeaderBlockFragment = payload[0:headerBlockLength]
+	f.Padding = payload[headerBlockLength:]
+
+	return f, nil
+}
+
+func unmarshalContinuationPayload(frameFlags uint8, streamId uint32, payload string) (Frame, error) {
+	f := CONTINUATION{}
+	f.StreamId = streamId
+	if flagIsSet(frameFlags, 0x4) {
+		f.Flags.END_HEADERS = true
+	}
+
+	paddingLength, err := decodePaddingLength(frameFlags, &payload)
+	if err != nil {
+		return nil, err
+	}
+
 	headerBlockLength := uint16(len(payload)) - paddingLength
 	f.HeaderBlockFragment = payload[0:headerBlockLength]
 	f.Padding = payload[headerBlockLength:]
