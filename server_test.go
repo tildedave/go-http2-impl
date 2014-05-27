@@ -20,7 +20,7 @@ func NewTestConn() (http2.Conn, *http2test.FakeConn) {
 func TestServeWithoutPreface(t *testing.T) {
 	conn, fakeConn := NewTestConn()
 
-	f := GOAWAY{0, 1, "Did not include connection preface"}
+	f := http2.GOAWAY{0, 1, "Did not include connection preface"}
 	bytes := f.Marshal()
 
 	fakeConn.ReadData = [][]byte{[]byte("not the preface")}
@@ -46,7 +46,7 @@ func TestServeWithThePrefaceSendsSettingsFrame(t *testing.T) {
 	conn, fakeConn := NewTestConn()
 
 	preface := "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
-	settingsFrame := SETTINGS{}
+	settingsFrame := http2.SETTINGS{}
 
 	fakeConn.ReadData = [][]byte{[]byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")}
 	serve(conn)

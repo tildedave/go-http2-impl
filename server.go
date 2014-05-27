@@ -19,7 +19,7 @@ func serve(conn http2.Conn) error {
 	for stopped := scanner.Scan(); stopped != false; stopped = scanner.Scan() {
 		str += scanner.Text() + "\r\n"
 		if !strings.HasPrefix(preface, str) {
-			f := GOAWAY{0, 1, "Did not include connection preface"}
+			f := http2.GOAWAY{0, 1, "Did not include connection preface"}
 			conn.Write(f.Marshal())
 			conn.Close()
 
@@ -32,7 +32,7 @@ func serve(conn http2.Conn) error {
 	}
 
 	conn.Write([]byte(preface))
-	conn.Write(SETTINGS{}.Marshal())
+	conn.Write(http2.SETTINGS{}.Marshal())
 	// wait for ACK
 
 	return nil
