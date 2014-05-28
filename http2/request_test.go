@@ -11,7 +11,7 @@ import (
 
 func NewTestConn() (Conn, *http2test.FakeConn) {
 	ioc := http2test.NewFakeConn()
-	conn := NewConn(ioc)
+	conn := NewServerConn(ioc)
 
 	return conn, ioc
 }

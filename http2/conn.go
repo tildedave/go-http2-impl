@@ -8,8 +8,9 @@ import (
 // Internal structure for managing a server connection
 // Connections own streams
 type serverConn struct {
-	context *hpack.EncodingContext
-	ioc     net.Conn
+	context      *hpack.EncodingContext
+	ioc          net.Conn
+	lastStreamId int
 }
 
 type Conn interface {
@@ -22,8 +23,9 @@ type Conn interface {
 
 func NewServerConn(ioc net.Conn) *serverConn {
 	return &serverConn{
-		context: hpack.NewEncodingContext(),
-		ioc:     ioc,
+		context:      hpack.NewEncodingContext(),
+		ioc:          ioc,
+		lastStreamId: 0,
 	}
 }
 
@@ -42,4 +44,11 @@ func (c *serverConn) Close() (err error) {
 func (c *serverConn) EncodeHeaderSet(hs hpack.HeaderSet) string {
 	// TODO: EncodeHuffman instead
 	return c.context.Encode(hs)
+}
+
+func (c *serverConn) NextStreamId() int {
+	nextStreamId := c.lastStreamId + 2
+	c.lastStreamId += 2
+
+	return nextStreamId
 }
