@@ -7,7 +7,7 @@ import (
 
 // Internal structure for managing a server connection
 // Connections own streams
-type conn struct {
+type serverConn struct {
 	context *hpack.EncodingContext
 	ioc     net.Conn
 }
@@ -17,32 +17,29 @@ type Conn interface {
 	Write(p []byte) (n int, err error)
 	Close() error
 	EncodeHeaderSet(hs hpack.HeaderSet) string
-	HuffmanEncodeHeaderSet(hs hpack.HeaderSet) string
+	NextStreamId() int
 }
 
-func NewConn(ioc net.Conn) *conn {
-	return &conn{
+func NewServerConn(ioc net.Conn) *serverConn {
+	return &serverConn{
 		context: hpack.NewEncodingContext(),
 		ioc:     ioc,
 	}
 }
 
-func (c *conn) Read(p []byte) (n int, err error) {
+func (c *serverConn) Read(p []byte) (n int, err error) {
 	return c.ioc.Read(p)
 }
 
-func (c *conn) Write(p []byte) (n int, err error) {
+func (c *serverConn) Write(p []byte) (n int, err error) {
 	return c.ioc.Write(p)
 }
 
-func (c *conn) Close() (err error) {
+func (c *serverConn) Close() (err error) {
 	return c.ioc.Close()
 }
 
-func (c *conn) EncodeHeaderSet(hs hpack.HeaderSet) string {
-	return c.context.Encode(hs)
-}
-
-func (c *conn) HuffmanEncodeHeaderSet(hs hpack.HeaderSet) string {
+func (c *serverConn) EncodeHeaderSet(hs hpack.HeaderSet) string {
+	// TODO: EncodeHuffman instead
 	return c.context.Encode(hs)
 }
