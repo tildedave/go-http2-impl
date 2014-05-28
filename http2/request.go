@@ -61,7 +61,7 @@ func (r *Request) Write() {
 	h.HeaderBlockFragment = data
 	h.Flags.END_STREAM = true
 	h.Flags.END_HEADERS = true
-	h.StreamId = 23
+	h.StreamId = r.Conn.NextStreamId()
 
 	r.Conn.Write(h.Marshal())
 }

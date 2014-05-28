@@ -18,7 +18,7 @@ type Conn interface {
 	Write(p []byte) (n int, err error)
 	Close() error
 	EncodeHeaderSet(hs hpack.HeaderSet) string
-	NextStreamId() int
+	NextStreamId() uint32
 }
 
 func NewServerConn(ioc net.Conn) *serverConn {
@@ -46,8 +46,9 @@ func (c *serverConn) EncodeHeaderSet(hs hpack.HeaderSet) string {
 	return c.context.Encode(hs)
 }
 
-func (c *serverConn) NextStreamId() int {
-	nextStreamId := c.lastStreamId + 2
+func (c *serverConn) NextStreamId() uint32 {
+	// TODO: overflow
+	nextStreamId := uint32(c.lastStreamId + 2)
 	c.lastStreamId += 2
 
 	return nextStreamId

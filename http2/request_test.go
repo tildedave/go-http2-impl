@@ -38,7 +38,7 @@ func TestWrite(t *testing.T) {
 	h := HEADERS{}
 	h.Flags.END_HEADERS = true
 	h.Flags.END_STREAM = true
-	h.StreamId = 23
+	h.StreamId = 2
 
 	context := hpack.NewEncodingContext()
 	h.HeaderBlockFragment = context.Encode(hpack.HeaderSet{[]hpack.HeaderField{
@@ -63,7 +63,7 @@ func TestWriteWithCustomHeader(t *testing.T) {
 	h := HEADERS{}
 	h.Flags.END_HEADERS = true
 	h.Flags.END_STREAM = true
-	h.StreamId = 23
+	h.StreamId = 2
 
 	context := hpack.NewEncodingContext()
 	h.HeaderBlockFragment = context.Encode(hpack.HeaderSet{[]hpack.HeaderField{
